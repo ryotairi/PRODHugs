@@ -124,6 +124,13 @@ type AdminUser struct {
 // AdminUserRole defines model for AdminUser.Role.
 type AdminUserRole string
 
+// AnnouncementResponse defines model for AnnouncementResponse.
+type AnnouncementResponse struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Message   string             `json:"message"`
+}
+
 // AuthResponse defines model for AuthResponse.
 type AuthResponse struct {
 	Token string `json:"token"`
@@ -449,6 +456,11 @@ type TooManyRequests = Error
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
+// CreateAnnouncementJSONBody defines parameters for CreateAnnouncement.
+type CreateAnnouncementJSONBody struct {
+	Message string `json:"message"`
+}
+
 // GetAdminUsersParams defines parameters for GetAdminUsers.
 type GetAdminUsersParams struct {
 	// Q Search by username or display name
@@ -576,6 +588,9 @@ type SearchUsersParams struct {
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// CreateAnnouncementJSONRequestBody defines body for CreateAnnouncement for application/json ContentType.
+type CreateAnnouncementJSONRequestBody CreateAnnouncementJSONBody
+
 // AdminUpdateBalanceJSONRequestBody defines body for AdminUpdateBalance for application/json ContentType.
 type AdminUpdateBalanceJSONRequestBody AdminUpdateBalanceJSONBody
 
@@ -617,6 +632,12 @@ type UpdateUserSettingsJSONRequestBody UpdateUserSettingsJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Create a new site-wide announcement
+	// (POST /admin/announcements)
+	CreateAnnouncement(ctx echo.Context) error
+	// Remove an active announcement
+	// (DELETE /admin/announcements/{announcementId})
+	DeleteAnnouncement(ctx echo.Context, announcementId openapi_types.UUID) error
 	// admin ping (testing auth)
 	// (GET /admin/ping)
 	GetAdminPing(ctx echo.Context) error
@@ -656,6 +677,12 @@ type ServerInterface interface {
 	// Change a user's username
 	// (PUT /admin/users/{userId}/username)
 	AdminUpdateUsername(ctx echo.Context, userId openapi_types.UUID) error
+	// Get the currently active announcement for this user
+	// (GET /announcements/active)
+	GetActiveAnnouncement(ctx echo.Context) error
+	// Dismiss an announcement for the current user
+	// (POST /announcements/{announcementId}/dismiss)
+	DismissAnnouncement(ctx echo.Context, announcementId openapi_types.UUID) error
 	// Check if a username is available
 	// (GET /auth/check-username)
 	CheckUsername(ctx echo.Context, params CheckUsernameParams) error
@@ -781,6 +808,35 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// CreateAnnouncement converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateAnnouncement(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{"admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateAnnouncement(ctx)
+	return err
+}
+
+// DeleteAnnouncement converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteAnnouncement(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "announcementId" -------------
+	var announcementId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "announcementId", ctx.Param("announcementId"), &announcementId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter announcementId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{"admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteAnnouncement(ctx, announcementId)
+	return err
 }
 
 // GetAdminPing converts echo context to params.
@@ -1016,6 +1072,35 @@ func (w *ServerInterfaceWrapper) AdminUpdateUsername(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.AdminUpdateUsername(ctx, userId)
+	return err
+}
+
+// GetActiveAnnouncement converts echo context to params.
+func (w *ServerInterfaceWrapper) GetActiveAnnouncement(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{"user", "admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetActiveAnnouncement(ctx)
+	return err
+}
+
+// DismissAnnouncement converts echo context to params.
+func (w *ServerInterfaceWrapper) DismissAnnouncement(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "announcementId" -------------
+	var announcementId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "announcementId", ctx.Param("announcementId"), &announcementId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter announcementId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{"user", "admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DismissAnnouncement(ctx, announcementId)
 	return err
 }
 
@@ -1667,6 +1752,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/admin/announcements", wrapper.CreateAnnouncement)
+	router.DELETE(baseURL+"/admin/announcements/:announcementId", wrapper.DeleteAnnouncement)
 	router.GET(baseURL+"/admin/ping", wrapper.GetAdminPing)
 	router.GET(baseURL+"/admin/stats", wrapper.GetAdminStats)
 	router.GET(baseURL+"/admin/users", wrapper.GetAdminUsers)
@@ -1680,6 +1767,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/admin/users/:userId/special-tag", wrapper.AdminUpdateSpecialTag)
 	router.PUT(baseURL+"/admin/users/:userId/tag", wrapper.AdminUpdateTag)
 	router.PUT(baseURL+"/admin/users/:userId/username", wrapper.AdminUpdateUsername)
+	router.GET(baseURL+"/announcements/active", wrapper.GetActiveAnnouncement)
+	router.POST(baseURL+"/announcements/:announcementId/dismiss", wrapper.DismissAnnouncement)
 	router.GET(baseURL+"/auth/check-username", wrapper.CheckUsername)
 	router.POST(baseURL+"/auth/login", wrapper.Login)
 	router.POST(baseURL+"/auth/logout", wrapper.Logout)
@@ -1736,6 +1825,78 @@ type NotFoundJSONResponse Error
 type TooManyRequestsJSONResponse Error
 
 type UnauthorizedJSONResponse Error
+
+type CreateAnnouncementRequestObject struct {
+	Body *CreateAnnouncementJSONRequestBody
+}
+
+type CreateAnnouncementResponseObject interface {
+	VisitCreateAnnouncementResponse(w http.ResponseWriter) error
+}
+
+type CreateAnnouncement201JSONResponse AnnouncementResponse
+
+func (response CreateAnnouncement201JSONResponse) VisitCreateAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateAnnouncement401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateAnnouncement401JSONResponse) VisitCreateAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateAnnouncement403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateAnnouncement403JSONResponse) VisitCreateAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteAnnouncementRequestObject struct {
+	AnnouncementId openapi_types.UUID `json:"announcementId"`
+}
+
+type DeleteAnnouncementResponseObject interface {
+	VisitDeleteAnnouncementResponse(w http.ResponseWriter) error
+}
+
+type DeleteAnnouncement200JSONResponse struct {
+	Message string `json:"message"`
+}
+
+func (response DeleteAnnouncement200JSONResponse) VisitDeleteAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteAnnouncement401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteAnnouncement401JSONResponse) VisitDeleteAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteAnnouncement403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteAnnouncement403JSONResponse) VisitDeleteAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
 
 type GetAdminPingRequestObject struct {
 }
@@ -2334,6 +2495,67 @@ type AdminUpdateUsername409JSONResponse struct{ ConflictJSONResponse }
 func (response AdminUpdateUsername409JSONResponse) VisitAdminUpdateUsernameResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetActiveAnnouncementRequestObject struct {
+}
+
+type GetActiveAnnouncementResponseObject interface {
+	VisitGetActiveAnnouncementResponse(w http.ResponseWriter) error
+}
+
+type GetActiveAnnouncement200JSONResponse AnnouncementResponse
+
+func (response GetActiveAnnouncement200JSONResponse) VisitGetActiveAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetActiveAnnouncement204Response struct {
+}
+
+func (response GetActiveAnnouncement204Response) VisitGetActiveAnnouncementResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type GetActiveAnnouncement401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetActiveAnnouncement401JSONResponse) VisitGetActiveAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DismissAnnouncementRequestObject struct {
+	AnnouncementId openapi_types.UUID `json:"announcementId"`
+}
+
+type DismissAnnouncementResponseObject interface {
+	VisitDismissAnnouncementResponse(w http.ResponseWriter) error
+}
+
+type DismissAnnouncement200JSONResponse struct {
+	Message string `json:"message"`
+}
+
+func (response DismissAnnouncement200JSONResponse) VisitDismissAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DismissAnnouncement401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DismissAnnouncement401JSONResponse) VisitDismissAnnouncementResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -3695,6 +3917,12 @@ func (response GetUserProfile404JSONResponse) VisitGetUserProfileResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Create a new site-wide announcement
+	// (POST /admin/announcements)
+	CreateAnnouncement(ctx context.Context, request CreateAnnouncementRequestObject) (CreateAnnouncementResponseObject, error)
+	// Remove an active announcement
+	// (DELETE /admin/announcements/{announcementId})
+	DeleteAnnouncement(ctx context.Context, request DeleteAnnouncementRequestObject) (DeleteAnnouncementResponseObject, error)
 	// admin ping (testing auth)
 	// (GET /admin/ping)
 	GetAdminPing(ctx context.Context, request GetAdminPingRequestObject) (GetAdminPingResponseObject, error)
@@ -3734,6 +3962,12 @@ type StrictServerInterface interface {
 	// Change a user's username
 	// (PUT /admin/users/{userId}/username)
 	AdminUpdateUsername(ctx context.Context, request AdminUpdateUsernameRequestObject) (AdminUpdateUsernameResponseObject, error)
+	// Get the currently active announcement for this user
+	// (GET /announcements/active)
+	GetActiveAnnouncement(ctx context.Context, request GetActiveAnnouncementRequestObject) (GetActiveAnnouncementResponseObject, error)
+	// Dismiss an announcement for the current user
+	// (POST /announcements/{announcementId}/dismiss)
+	DismissAnnouncement(ctx context.Context, request DismissAnnouncementRequestObject) (DismissAnnouncementResponseObject, error)
 	// Check if a username is available
 	// (GET /auth/check-username)
 	CheckUsername(ctx context.Context, request CheckUsernameRequestObject) (CheckUsernameResponseObject, error)
@@ -3866,6 +4100,60 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// CreateAnnouncement operation middleware
+func (sh *strictHandler) CreateAnnouncement(ctx echo.Context) error {
+	var request CreateAnnouncementRequestObject
+
+	var body CreateAnnouncementJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateAnnouncement(ctx.Request().Context(), request.(CreateAnnouncementRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateAnnouncement")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateAnnouncementResponseObject); ok {
+		return validResponse.VisitCreateAnnouncementResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// DeleteAnnouncement operation middleware
+func (sh *strictHandler) DeleteAnnouncement(ctx echo.Context, announcementId openapi_types.UUID) error {
+	var request DeleteAnnouncementRequestObject
+
+	request.AnnouncementId = announcementId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteAnnouncement(ctx.Request().Context(), request.(DeleteAnnouncementRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteAnnouncement")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(DeleteAnnouncementResponseObject); ok {
+		return validResponse.VisitDeleteAnnouncementResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // GetAdminPing operation middleware
@@ -4225,6 +4513,54 @@ func (sh *strictHandler) AdminUpdateUsername(ctx echo.Context, userId openapi_ty
 		return err
 	} else if validResponse, ok := response.(AdminUpdateUsernameResponseObject); ok {
 		return validResponse.VisitAdminUpdateUsernameResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetActiveAnnouncement operation middleware
+func (sh *strictHandler) GetActiveAnnouncement(ctx echo.Context) error {
+	var request GetActiveAnnouncementRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetActiveAnnouncement(ctx.Request().Context(), request.(GetActiveAnnouncementRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetActiveAnnouncement")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetActiveAnnouncementResponseObject); ok {
+		return validResponse.VisitGetActiveAnnouncementResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// DismissAnnouncement operation middleware
+func (sh *strictHandler) DismissAnnouncement(ctx echo.Context, announcementId openapi_types.UUID) error {
+	var request DismissAnnouncementRequestObject
+
+	request.AnnouncementId = announcementId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DismissAnnouncement(ctx.Request().Context(), request.(DismissAnnouncementRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DismissAnnouncement")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(DismissAnnouncementResponseObject); ok {
+		return validResponse.VisitDismissAnnouncementResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -5228,96 +5564,100 @@ func (sh *strictHandler) GetUserProfile(ctx echo.Context, userId openapi_types.U
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

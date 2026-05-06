@@ -9,6 +9,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Announcement struct {
+	ID        uuid.UUID
+	Message   string
+	CreatedAt pgtype.Timestamptz
+	CreatedBy uuid.UUID
+	Active    bool
+}
+
+type AnnouncementDismissal struct {
+	AnnouncementID uuid.UUID
+	UserID         uuid.UUID
+	DismissedAt    pgtype.Timestamptz
+}
+
 type Balance struct {
 	UserID    uuid.UUID
 	Amount    int32

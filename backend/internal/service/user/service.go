@@ -58,14 +58,30 @@ type telegramLinkStore interface {
 	GenerateToken(userID uuid.UUID) (string, error)
 }
 
+type announcementRepo interface {
+	GetActiveForUser(ctx context.Context, userID uuid.UUID) (*models.Announcement, error)
+	GetActive(ctx context.Context) (*models.Announcement, error)
+	Create(ctx context.Context, message string, createdBy uuid.UUID) (*models.Announcement, error)
+	Deactivate(ctx context.Context, id uuid.UUID) error
+	Dismiss(ctx context.Context, announcementID, userID uuid.UUID) error
+}
+
+// AnnouncementCallback is called when an announcement is created or removed.
+type AnnouncementCallback func(announcement *models.Announcement)
+type AnnouncementRemovedCallback func(id uuid.UUID)
+
 type service struct {
 	repo              repo
 	balanceRepo       balanceRepo
 	refreshTokenRepo  refreshTokenRepo
 	jwtManager        jwtManager
 	telegramLinkStore telegramLinkStore
+	announcementRepo  announcementRepo
 	botUsername        string
 	tx                transactor
+
+	onAnnouncementCreated AnnouncementCallback
+	onAnnouncementRemoved AnnouncementRemovedCallback
 }
 
 func New(repo repo, jwtManager jwtManager, opts ...func(*service)) *service {
@@ -98,9 +114,23 @@ func WithRefreshTokenRepo(rtr refreshTokenRepo) func(*service) {
 	}
 }
 
+func WithAnnouncementRepo(ar announcementRepo) func(*service) {
+	return func(s *service) {
+		s.announcementRepo = ar
+	}
+}
+
 // SetTelegramLinkStore configures the Telegram link store and bot username
 // for deep-link token generation. Called after construction to break circular deps.
 func (s *service) SetTelegramLinkStore(ls telegramLinkStore, botUsername string) {
 	s.telegramLinkStore = ls
 	s.botUsername = botUsername
+}
+
+func (s *service) SetAnnouncementCreatedCallback(cb AnnouncementCallback) {
+	s.onAnnouncementCreated = cb
+}
+
+func (s *service) SetAnnouncementRemovedCallback(cb AnnouncementRemovedCallback) {
+	s.onAnnouncementRemoved = cb
 }

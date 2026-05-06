@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useHugsStore, type HugFeedItem, type PendingHugInboxItem } from '@/stores/hugs'
 import { useOnlineStore } from '@/stores/online'
+import { useAnnouncementStore, type Announcement } from '@/stores/announcement'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { hugCompletedToast } from '@/lib/utils'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
@@ -13,10 +14,12 @@ import { Toaster } from '@/components/ui/sonner'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppBottomNav from '@/components/AppBottomNav.vue'
+import AnnouncementBanner from '@/components/AnnouncementBanner.vue'
 
 const auth = useAuthStore()
 const hugsStore = useHugsStore()
 const onlineStore = useOnlineStore()
+const announcementStore = useAnnouncementStore()
 const route = useRoute()
 const ws = useWebSocket()
 
@@ -44,6 +47,7 @@ async function initAuthState() {
     ws.connect()
     hugsStore.fetchInboxCount()
     hugsStore.fetchOutgoing()
+    announcementStore.fetchActive()
     setupGlobalWsListeners()
   }
   authReady.value = true
@@ -134,6 +138,18 @@ function setupGlobalWsListeners() {
       onlineStore.setUsers(data.user_ids)
     }),
   )
+
+  wsCleanups.push(
+    ws.on<Announcement>('announcement', (data) => {
+      announcementStore.setFromWS(data)
+    }),
+  )
+
+  wsCleanups.push(
+    ws.on<{ id: string }>('announcement_removed', () => {
+      announcementStore.clearFromWS()
+    }),
+  )
 }
 
 // Watch for auth changes (login/logout)
@@ -149,6 +165,7 @@ watch(
       ws.disconnect()
       clearGlobalWsListeners()
       onlineStore.clear()
+      announcementStore.clearFromWS()
       hugsStore.inboxCount = 0
       hugsStore.inbox = []
       hugsStore.outgoingHugs = []
@@ -178,6 +195,7 @@ onUnmounted(() => {
           <SidebarTrigger class="-ml-1 hidden md:inline-flex" />
           <AppHeader />
         </header>
+        <AnnouncementBanner />
         <main class="flex-1 p-3 pb-24 sm:p-6 sm:pb-24 md:pb-6">
           <RouterView />
         </main>

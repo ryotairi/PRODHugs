@@ -41,10 +41,16 @@ type service interface {
 	GetPairStreakCalendar(ctx context.Context, userA, userB uuid.UUID) ([]*models.StreakCalendarDay, error)
 }
 
-type HugHandler struct {
-	svc service
+type announcementService interface {
+	GetActiveAnnouncement(ctx context.Context, userID uuid.UUID) (*models.Announcement, error)
+	DismissAnnouncement(ctx context.Context, userID, announcementID uuid.UUID) error
 }
 
-func New(svc service) *HugHandler {
-	return &HugHandler{svc: svc}
+type HugHandler struct {
+	svc     service
+	annSvc  announcementService
+}
+
+func New(svc service, annSvc announcementService) *HugHandler {
+	return &HugHandler{svc: svc, annSvc: annSvc}
 }

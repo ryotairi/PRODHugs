@@ -16,6 +16,8 @@ export interface WSMessage<T = unknown> {
     | 'inbox_count'
     | 'online_count'
     | 'online_users'
+    | 'announcement'
+    | 'announcement_removed'
   data: T
 }
 

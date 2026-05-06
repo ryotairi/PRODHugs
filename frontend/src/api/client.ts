@@ -199,6 +199,12 @@ export const leaderboardApi = {
   get: (limit = 20, offset = 0) => api.get('/leaderboard', { params: { limit, offset } }),
 }
 
+// Announcements
+export const announcementsApi = {
+  getActive: () => api.get('/announcements/active'),
+  dismiss: (id: string) => api.post(`/announcements/${id}/dismiss`),
+}
+
 // Admin
 export const adminApi = {
   getStats: () => api.get('/admin/stats'),
@@ -221,4 +227,6 @@ export const adminApi = {
   updateBalance: (userId: string, amount: number) =>
     api.put(`/admin/users/${userId}/balance`, { amount }),
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
+  createAnnouncement: (message: string) => api.post('/admin/announcements', { message }),
+  deleteAnnouncement: (id: string) => api.delete(`/admin/announcements/${id}`),
 }

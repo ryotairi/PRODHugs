@@ -33,6 +33,7 @@ import (
 	balancerepo "go-service-template/internal/repository/balance"
 	blockrepo "go-service-template/internal/repository/block"
 	dailyrewardrepo "go-service-template/internal/repository/daily_reward"
+	announcementrepo "go-service-template/internal/repository/announcement"
 	hugrepo "go-service-template/internal/repository/hug"
 	intimacyrepo "go-service-template/internal/repository/intimacy"
 	tokenrepo "go-service-template/internal/repository/token"
@@ -91,6 +92,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	blockRepoInst := blockrepo.New(a.dbPool)
 	refreshTokenRepo := tokenrepo.New(a.dbPool)
 	intimacyRepoInst := intimacyrepo.New(a.dbPool)
+	announcementRepo := announcementrepo.New(a.dbPool)
 
 	// Transactor for database transactions
 	transactor := repository.NewTransactor(a.dbPool)
@@ -102,6 +104,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 		userservice.WithBalanceRepo(balanceRepo),
 		userservice.WithRefreshTokenRepo(refreshTokenRepo),
 		userservice.WithTransactor(transactor),
+		userservice.WithAnnouncementRepo(announcementRepo),
 	)
 	hugService := hugservice.New(hugRepo, balanceRepo, dailyRewardRepo, userRepo, blockRepoInst, intimacyRepoInst, transactor)
 
@@ -137,10 +140,21 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 		a.hub.SendToUser(targetUserID, "hug_cancelled", map[string]string{"hug_id": hugID.String()})
 	})
 
+	userService.SetAnnouncementCreatedCallback(func(ann *models.Announcement) {
+		a.hub.Broadcast("announcement", map[string]any{
+			"id":         ann.ID.String(),
+			"message":    ann.Message,
+			"created_at": ann.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	})
+	userService.SetAnnouncementRemovedCallback(func(id uuid.UUID) {
+		a.hub.Broadcast("announcement_removed", map[string]string{"id": id.String()})
+	})
+
 	// Handlers
 	userHandler := userhandler.New(userService, jwtManager, a.cfg.JWT.CookieSecure)
 	userHandler.SetTelegramLoginStore(tgLoginStore, a.cfg.Telegram.BotUsername)
-	hugHandler := hughandler.New(hugService)
+	hugHandler := hughandler.New(hugService, userService)
 	adminHandler := adminhandler.New(userService)
 
 	if err := a.initEcho(); err != nil {

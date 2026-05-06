@@ -631,6 +631,17 @@ components:
           items:
             $ref: '#/components/schemas/StreakCalendarDay'
 
+    AnnouncementResponse:
+      type: object
+      required:
+        - id
+        - message
+        - created_at
+      properties:
+        id: { type: string, format: uuid }
+        message: { type: string }
+        created_at: { type: string, format: date-time }
+
   responses:
     BadRequest:
       description: Bad Request
@@ -1781,6 +1792,112 @@ paths:
                   $ref: '#/components/schemas/LeaderboardEntry'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /announcements/active:
+    get:
+      summary: Get the currently active announcement for this user
+      operationId: getActiveAnnouncement
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '200':
+          description: Active announcement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+        '204':
+          description: No active announcement (or dismissed)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /announcements/{announcementId}/dismiss:
+    post:
+      summary: Dismiss an announcement for the current user
+      operationId: dismissAnnouncement
+      security:
+        - BearerAuth: ["user", "admin"]
+      parameters:
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Announcement dismissed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/announcements:
+    post:
+      summary: Create a new site-wide announcement
+      operationId: createAnnouncement
+      security:
+        - BearerAuth: ["admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              additionalProperties: false
+      responses:
+        '201':
+          description: Announcement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/announcements/{announcementId}:
+    delete:
+      summary: Remove an active announcement
+      operationId: deleteAnnouncement
+      security:
+        - BearerAuth: ["admin"]
+      parameters:
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Announcement removed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /admin/stats:
     get:

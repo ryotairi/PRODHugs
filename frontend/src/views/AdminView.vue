@@ -15,8 +15,10 @@ import {
   Hash,
   Trash2,
   Radio,
+  Megaphone,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { announcementsApi, adminApi } from '@/api/client'
 import { useAdminStore, type AdminUser } from '@/stores/admin'
 import { useOnlineStore } from '@/stores/online'
 import { useWebSocket } from '@/composables/useWebSocket'
@@ -26,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -65,12 +68,54 @@ const unsubOnline = on<{ count: number }>('online_count', (data) => {
   onlineCount.value = data.count
 })
 
+// ── Announcement management ──
+const announcementMessage = ref('')
+const currentAnnouncement = ref<{ id: string; message: string; created_at: string } | null>(null)
+const publishingAnnouncement = ref(false)
+
+async function fetchCurrentAnnouncement() {
+  try {
+    const res = await announcementsApi.getActive()
+    currentAnnouncement.value = res.data ?? null
+  } catch {
+    currentAnnouncement.value = null
+  }
+}
+
+async function publishAnnouncement() {
+  if (!announcementMessage.value.trim()) return
+  publishingAnnouncement.value = true
+  try {
+    await adminApi.createAnnouncement(announcementMessage.value.trim())
+    announcementMessage.value = ''
+    await fetchCurrentAnnouncement()
+    toast.success('Объявление опубликовано')
+  } catch (e) {
+    const parsed = parseBackendError(e)
+    toast.error(parsed.generalError ?? 'Ошибка публикации')
+  } finally {
+    publishingAnnouncement.value = false
+  }
+}
+
+async function removeAnnouncement() {
+  if (!currentAnnouncement.value) return
+  try {
+    await adminApi.deleteAnnouncement(currentAnnouncement.value.id)
+    currentAnnouncement.value = null
+    toast.success('Объявление удалено')
+  } catch (e) {
+    const parsed = parseBackendError(e)
+    toast.error(parsed.generalError ?? 'Ошибка удаления')
+  }
+}
+
 // ── Infinite scroll ──
 const sentinel = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
 onMounted(async () => {
-  await Promise.all([admin.fetchStats(), admin.fetchUsers()])
+  await Promise.all([admin.fetchStats(), admin.fetchUsers(), fetchCurrentAnnouncement()])
   loading.value = false
 
   await nextTick()
@@ -396,6 +441,40 @@ function formatDate(dateStr: string): string {
       <h1 class="text-2xl font-semibold tracking-tight">Панель администратора</h1>
       <p class="text-muted-foreground">Управление пользователями</p>
     </div>
+
+    <!-- Announcement management -->
+    <Card>
+      <CardHeader class="pb-3">
+        <CardTitle class="flex items-center gap-2 text-base">
+          <Megaphone class="size-5 text-prod-yellow" />
+          Объявление
+        </CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <div
+          v-if="currentAnnouncement"
+          class="flex items-start justify-between gap-3 rounded-lg border p-3"
+        >
+          <p class="text-sm whitespace-pre-wrap">{{ currentAnnouncement.message }}</p>
+          <Button variant="ghost" size="sm" class="shrink-0 text-destructive" @click="removeAnnouncement">
+            Удалить
+          </Button>
+        </div>
+        <Textarea
+          v-model="announcementMessage"
+          placeholder="Текст объявления..."
+          class="min-h-20 resize-none"
+        />
+        <Button
+          variant="yellow"
+          class="w-full rounded-[21px]"
+          :disabled="publishingAnnouncement || !announcementMessage.trim()"
+          @click="publishAnnouncement"
+        >
+          {{ publishingAnnouncement ? 'Публикация...' : 'Опубликовать' }}
+        </Button>
+      </CardContent>
+    </Card>
 
     <!-- Stats cards -->
     <div v-if="loading" class="grid grid-cols-2 gap-4 sm:grid-cols-3">

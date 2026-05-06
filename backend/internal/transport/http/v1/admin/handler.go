@@ -22,6 +22,10 @@ type service interface {
 	AdminUpdateTag(ctx context.Context, id uuid.UUID, tag *string) (*models.User, error)
 	AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialTag *string) (*models.User, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
+	// Announcements
+	CreateAnnouncement(ctx context.Context, adminID uuid.UUID, message string) (*models.Announcement, error)
+	DeactivateAnnouncement(ctx context.Context, id uuid.UUID) error
+	GetActiveAnnouncement(ctx context.Context, userID uuid.UUID) (*models.Announcement, error)
 }
 
 type AdminHandler struct {
