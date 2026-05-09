@@ -15,6 +15,8 @@ export interface AdminUser {
   created_at?: string | null
   last_visit_at?: string | null
   balance: number
+  requires_sudoku?: boolean
+  sudoku_cooldown_until?: string | null
 }
 
 export interface AdminStats {
@@ -123,6 +125,14 @@ export const useAdminStore = defineStore('admin', () => {
     return updated
   }
 
+  async function updateRequiresSudoku(userId: string, requiresSudoku: boolean) {
+    const res = await adminApi.updateRequiresSudoku(userId, requiresSudoku)
+    const updated: AdminUser = res.data
+    const idx = users.value.findIndex((u) => u.id === userId)
+    if (idx !== -1) users.value[idx] = updated
+    return updated
+  }
+
   async function updatePassword(userId: string, password: string) {
     await adminApi.updatePassword(userId, password)
   }
@@ -157,6 +167,7 @@ export const useAdminStore = defineStore('admin', () => {
     updateDisplayName,
     updateTag,
     updateSpecialTag,
+    updateRequiresSudoku,
     updatePassword,
     updateBalance,
     deleteUser,

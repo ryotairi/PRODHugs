@@ -82,19 +82,32 @@ type RefreshToken struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type SudokuCaptcha struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Puzzle    []byte
+	Solution  []byte
+	Errors    int32
+	Passed    bool
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type User struct {
-	ID          uuid.UUID
-	Username    string
-	Password    string
-	Role        string
-	Gender      pgtype.Text
-	BannedAt    pgtype.Timestamptz
-	HugSlots    int32
-	CreatedAt   pgtype.Timestamptz
-	DisplayName pgtype.Text
-	TelegramID  pgtype.Int8
-	Tag         pgtype.Text
-	SpecialTag  pgtype.Text
+	ID                  uuid.UUID
+	Username            string
+	Password            string
+	Role                string
+	Gender              pgtype.Text
+	BannedAt            pgtype.Timestamptz
+	HugSlots            int32
+	CreatedAt           pgtype.Timestamptz
+	DisplayName         pgtype.Text
+	TelegramID          pgtype.Int8
+	Tag                 pgtype.Text
+	SpecialTag          pgtype.Text
+	RequiresSudoku      bool
+	SudokuCooldownUntil pgtype.Timestamptz
 }
 
 type UserBlock struct {

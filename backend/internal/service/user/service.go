@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 	"go-service-template/internal/models"
+	"go-service-template/internal/db/sqlc/storage"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -31,6 +33,14 @@ type repo interface {
 	AdminUpdateDisplayName(ctx context.Context, id uuid.UUID, displayName *string) (*models.User, error)
 	SearchUsersAdmin(ctx context.Context, query string, limit, offset int32) ([]*models.AdminUser, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
+	AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error)
+	
+	CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt time.Time) (storage.SudokuCaptcha, error)
+	GetSudokuCaptcha(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
+	IncrementSudokuErrors(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
+	MarkSudokuPassed(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
+	DeleteSudokuCaptcha(ctx context.Context, id uuid.UUID) error
+	SetSudokuCooldown(ctx context.Context, userID uuid.UUID, cooldownUntil time.Time) error
 }
 
 type balanceRepo interface {
@@ -52,6 +62,8 @@ type refreshTokenRepo interface {
 type jwtManager interface {
 	GenerateAccessToken(userID uuid.UUID, role string) (string, int64, error)
 	GenerateRefreshToken(userID uuid.UUID) (string, string, int64, error)
+	GenerateCaptchaToken(userID uuid.UUID) (string, error)
+	ParseCaptchaToken(tokenString string) (uuid.UUID, error)
 }
 
 type telegramLinkStore interface {

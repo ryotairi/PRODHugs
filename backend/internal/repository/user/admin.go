@@ -203,3 +203,20 @@ func (r *repo) AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialT
 
 	return toModelUser(u), nil
 }
+
+func (r *repo) AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	u, err := q.AdminUpdateRequiresSudoku(ctx, storage.AdminUpdateRequiresSudokuParams{
+		ID:             id,
+		RequiresSudoku: requiresSudoku,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errorz.ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return toModelUser(u), nil
+}

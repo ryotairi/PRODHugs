@@ -24,22 +24,26 @@ type User struct {
 	Tag            *string
 	SpecialTag     *string
 	TelegramID     *int64
-	BannedAt       *time.Time
-	CreatedAt      *time.Time
+	BannedAt            *time.Time
+	CreatedAt           *time.Time
+	RequiresSudoku      bool
+	SudokuCooldownUntil *time.Time
 }
 
 type AdminUser struct {
-	ID          uuid.UUID
-	Username    string
-	Role        string
-	Gender      *string
-	DisplayName *string
-	Tag         *string
-	SpecialTag  *string
-	BannedAt    *time.Time
-	CreatedAt   *time.Time
-	Balance     int32
-	LastVisitAt *time.Time // proxy for last user visit via refresh token
+	ID                  uuid.UUID
+	Username            string
+	Role                string
+	Gender              *string
+	DisplayName         *string
+	Tag                 *string
+	SpecialTag          *string
+	BannedAt            *time.Time
+	CreatedAt           *time.Time
+	Balance             int32
+	LastVisitAt         *time.Time // proxy for last user visit via refresh token
+	RequiresSudoku      bool
+	SudokuCooldownUntil *time.Time
 }
 
 type AdminStats struct {

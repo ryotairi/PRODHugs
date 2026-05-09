@@ -76,3 +76,20 @@ func (h *AdminHandler) AdminUpdatePassword(ctx context.Context, req v1.AdminUpda
 		Message: "password updated",
 	}, nil
 }
+
+func (h *AdminHandler) AdminUpdateRequiresSudoku(ctx context.Context, req v1.AdminUpdateRequiresSudokuRequestObject) (v1.AdminUpdateRequiresSudokuResponseObject, error) {
+	u, err := h.svc.AdminUpdateRequiresSudoku(ctx, req.UserId, req.Body.RequiresSudoku)
+	if err != nil {
+		if errors.Is(err, errorz.ErrUserNotFound) {
+			return v1.AdminUpdateRequiresSudoku404JSONResponse{
+				NotFoundJSONResponse: v1.NotFoundJSONResponse{
+					Message: "user not found",
+					Code:    v1.USERNOTFOUND,
+				},
+			}, nil
+		}
+		return nil, err
+	}
+
+	return v1.AdminUpdateRequiresSudoku200JSONResponse(toV1AdminUser(u)), nil
+}

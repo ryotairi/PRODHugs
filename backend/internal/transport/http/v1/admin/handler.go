@@ -21,11 +21,10 @@ type service interface {
 	AdminUpdateDisplayName(ctx context.Context, id uuid.UUID, displayName *string) (*models.User, error)
 	AdminUpdateTag(ctx context.Context, id uuid.UUID, tag *string) (*models.User, error)
 	AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialTag *string) (*models.User, error)
+	AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
-	// Announcements
 	CreateAnnouncement(ctx context.Context, adminID uuid.UUID, message string) (*models.Announcement, error)
 	DeactivateAnnouncement(ctx context.Context, id uuid.UUID) error
-	GetActiveAnnouncement(ctx context.Context, userID uuid.UUID) (*models.Announcement, error)
 }
 
 type AdminHandler struct {
@@ -45,6 +44,8 @@ func toV1AdminUser(u *models.User) v1.AdminUser {
 		DisplayName: u.DisplayName,
 		Tag:         u.Tag,
 		SpecialTag:  u.SpecialTag,
+		RequiresSudoku: &u.RequiresSudoku,
+		SudokuCooldownUntil: u.SudokuCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)
@@ -67,6 +68,8 @@ func toV1AdminUserFromAdmin(u *models.AdminUser) v1.AdminUser {
 		Tag:         u.Tag,
 		SpecialTag:  u.SpecialTag,
 		LastVisitAt: u.LastVisitAt,
+		RequiresSudoku: &u.RequiresSudoku,
+		SudokuCooldownUntil: u.SudokuCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)

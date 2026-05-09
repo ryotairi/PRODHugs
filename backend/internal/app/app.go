@@ -106,7 +106,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 		userservice.WithTransactor(transactor),
 		userservice.WithAnnouncementRepo(announcementRepo),
 	)
-	hugService := hugservice.New(hugRepo, balanceRepo, dailyRewardRepo, userRepo, blockRepoInst, intimacyRepoInst, transactor)
+	hugService := hugservice.New(hugRepo, balanceRepo, dailyRewardRepo, userRepo, blockRepoInst, intimacyRepoInst, jwtManager, transactor)
 
 	// Telegram: client, bot, notifier, link store & login store
 	tgClient := telegram.New(a.cfg.Telegram.BotToken)

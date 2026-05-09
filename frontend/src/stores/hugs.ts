@@ -127,6 +127,8 @@ export interface UserProfile {
   mutual_received?: number
   is_blocked?: boolean
   intimacy?: IntimacyInfo | null
+  requires_sudoku?: boolean
+  sudoku_cooldown_until?: string | null
 }
 
 export interface BlockedUser {
@@ -237,8 +239,8 @@ export const useHugsStore = defineStore('hugs', () => {
     return res.data
   }
 
-  async function suggestHug(userId: string, hugType?: string, comment?: string) {
-    const res = await hugsApi.suggest(userId, hugType, comment)
+  async function suggestHug(userId: string, hugType?: string, comment?: string, captchaToken?: string) {
+    const res = await hugsApi.suggest(userId, hugType, comment, captchaToken)
     // The suggest endpoint returns receiver_username/receiver_gender directly.
     outgoingHugs.value.unshift({
       id: res.data.id,

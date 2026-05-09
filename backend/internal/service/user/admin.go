@@ -78,3 +78,7 @@ func (s *service) AdminDeleteUser(ctx context.Context, id uuid.UUID) error {
 func (s *service) AdminUpdateBalance(ctx context.Context, id uuid.UUID, amount int32) (*models.Balance, error) {
 	return s.balanceRepo.AdminSetBalance(ctx, id, amount)
 }
+
+func (s *service) AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error) {
+	return s.repo.AdminUpdateRequiresSudoku(ctx, id, requiresSudoku)
+}

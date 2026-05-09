@@ -3,7 +3,10 @@ package hug
 import (
 	"context"
 	"errors"
+	"time"
+
 	"go-service-template/internal/errorz"
+	"go-service-template/internal/models"
 	"go-service-template/internal/transport/http/middleware"
 	v1 "go-service-template/internal/transport/http/v1"
 
@@ -189,35 +192,56 @@ func (h *HugHandler) GetUserProfile(ctx context.Context, req v1.GetUserProfileRe
 		return nil, err
 	}
 
-	balAmount := int(bal.Amount)
-	resp := v1.GetUserProfile200JSONResponse{
-		Id:           user.ID,
-		Username:     user.Username,
-		DisplayName:  user.DisplayName,
-		Tag:          user.Tag,
-		SpecialTag:   user.SpecialTag,
-		Role:         user.Role,
-		HugsGiven:    int(stats.HugsGiven),
-		HugsReceived: int(stats.HugsReceived),
-		TotalHugs:    int(stats.TotalHugs),
-		Rank:         stats.Rank,
-		Balance:      &balAmount,
-	}
+	rank := models.GetRank(stats.TotalHugs, user.Gender)
+
+	var gender *v1.Gender
 	if user.Gender != nil {
 		g := v1.Gender(*user.Gender)
-		resp.Gender = &g
+		gender = &g
 	}
+
+	var sudokuCooldownUntil *time.Time
+	if user.SudokuCooldownUntil != nil {
+		sudokuCooldownUntil = user.SudokuCooldownUntil
+	}
+
+	var balAmt *int
+	if bal != nil {
+		amt := int(bal.Amount)
+		balAmt = &amt
+	}
+
+	var mutTot, mutGiv, mutRec *int
 	if mutual != nil {
-		mt := int(mutual.Total)
-		mg := int(mutual.Given)
-		mr := int(mutual.Received)
-		resp.MutualTotal = &mt
-		resp.MutualGiven = &mg
-		resp.MutualReceived = &mr
+		tot := int(mutual.Total)
+		giv := int(mutual.Given)
+		rec := int(mutual.Received)
+		mutTot = &tot
+		mutGiv = &giv
+		mutRec = &rec
 	}
-	if isBlocked {
-		resp.IsBlocked = &isBlocked
+
+	resp := v1.GetUserProfile200JSONResponse{
+		Id:                  user.ID,
+		Username:            user.Username,
+		Role:                user.Role,
+		Gender:              gender,
+		DisplayName:         user.DisplayName,
+		Tag:                 user.Tag,
+		SpecialTag:          user.SpecialTag,
+		HugsGiven:           int(stats.HugsGiven),
+		HugsReceived:        int(stats.HugsReceived),
+		TotalHugs:           int(stats.TotalHugs),
+		Rank:                rank,
+		Balance:             balAmt,
+		MutualTotal:         mutTot,
+		MutualGiven:         mutGiv,
+		MutualReceived:      mutRec,
+		IsBlocked:           &isBlocked,
+		RequiresSudoku:      &user.RequiresSudoku,
+		SudokuCooldownUntil: sudokuCooldownUntil,
 	}
+
 	if intimacy != nil {
 		hugTypes := make([]v1.HugType, len(intimacy.AvailableHugTypes))
 		for i, ht := range intimacy.AvailableHugTypes {
@@ -237,6 +261,7 @@ func (h *HugHandler) GetUserProfile(ctx context.Context, req v1.GetUserProfileRe
 			BonusCoins:           intimacy.BonusCoins,
 		}
 	}
+
 	return resp, nil
 }
 

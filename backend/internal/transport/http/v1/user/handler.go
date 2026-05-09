@@ -5,6 +5,7 @@ import (
 	"go-service-template/internal/jwt"
 	"go-service-template/internal/models"
 	"go-service-template/internal/telegram"
+	userService "go-service-template/internal/service/user"
 	v1 "go-service-template/internal/transport/http/v1"
 
 	"github.com/google/uuid"
@@ -23,6 +24,9 @@ type service interface {
 	IsRefreshTokenActive(ctx context.Context, jti string) (bool, error)
 	RevokeRefreshToken(ctx context.Context, jti string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	GenerateSudokuCaptcha(ctx context.Context, userID uuid.UUID) (uuid.UUID, [][]int, error)
+	VerifySudokuCell(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID, row, col, value int) (*userService.CaptchaResult, error)
+	CompleteSudoku(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID) (string, error)
 }
 
 type UserHandler struct {
@@ -53,6 +57,8 @@ func toV1User(u *models.User) v1.User {
 		Tag:         u.Tag,
 		SpecialTag:  u.SpecialTag,
 		TelegramId:  u.TelegramID,
+		RequiresSudoku: &u.RequiresSudoku,
+		SudokuCooldownUntil: u.SudokuCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)

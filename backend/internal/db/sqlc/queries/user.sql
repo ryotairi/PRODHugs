@@ -156,7 +156,7 @@ SELECT COUNT(*) FROM users;
 SELECT COUNT(*) FROM users WHERE banned_at IS NOT NULL;
 
 -- name: ListUsersAdmin :many
-SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at,
+SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.requires_sudoku, u.sudoku_cooldown_until,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -170,7 +170,7 @@ ORDER BY last_visit_at DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
 
 -- name: SearchUsersAdmin :many
-SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at,
+SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.requires_sudoku, u.sudoku_cooldown_until,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -227,6 +227,17 @@ UPDATE users
 SET special_tag = $2
 WHERE id = $1
 RETURNING *;
+
+-- name: AdminUpdateRequiresSudoku :one
+UPDATE users
+SET requires_sudoku = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: SetSudokuCooldown :exec
+UPDATE users
+SET sudoku_cooldown_until = $2
+WHERE id = $1;
 
 -- name: AdminDeleteUser :execrows
 DELETE FROM users

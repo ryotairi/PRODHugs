@@ -48,18 +48,24 @@ func toModelUser(u storage.User) *models.User {
 	if u.SpecialTag.Valid {
 		specialTag = &u.SpecialTag.String
 	}
+	var sudokuCooldownUntil *time.Time
+	if u.SudokuCooldownUntil.Valid {
+		sudokuCooldownUntil = &u.SudokuCooldownUntil.Time
+	}
 	return &models.User{
-		ID:             u.ID,
-		Username:       u.Username,
-		Role:           u.Role,
-		HashedPassword: u.Password,
-		Gender:         gender,
-		DisplayName:    displayName,
-		Tag:            tag,
-		SpecialTag:     specialTag,
-		TelegramID:     telegramID,
-		BannedAt:       bannedAt,
-		CreatedAt:      createdAt,
+		ID:                  u.ID,
+		Username:            u.Username,
+		Role:                u.Role,
+		HashedPassword:      u.Password,
+		Gender:              gender,
+		DisplayName:         displayName,
+		Tag:                 tag,
+		SpecialTag:          specialTag,
+		TelegramID:          telegramID,
+		BannedAt:            bannedAt,
+		CreatedAt:           createdAt,
+		RequiresSudoku:      u.RequiresSudoku,
+		SudokuCooldownUntil: sudokuCooldownUntil,
 	}
 }
 
@@ -92,18 +98,24 @@ func toAdminUser(u storage.ListUsersAdminRow) *models.AdminUser {
 	if u.SpecialTag.Valid {
 		specialTag = &u.SpecialTag.String
 	}
+	var sudokuCooldownUntil *time.Time
+	if u.SudokuCooldownUntil.Valid {
+		sudokuCooldownUntil = &u.SudokuCooldownUntil.Time
+	}
 	return &models.AdminUser{
-		ID:          u.ID,
-		Username:    u.Username,
-		Role:        u.Role,
-		Gender:      gender,
-		DisplayName: displayName,
-		Tag:         tag,
-		SpecialTag:  specialTag,
-		BannedAt:    bannedAt,
-		CreatedAt:   createdAt,
-		Balance:     u.Balance,
-		LastVisitAt: lastVisitAt,
+		ID:                  u.ID,
+		Username:            u.Username,
+		Role:                u.Role,
+		Gender:              gender,
+		DisplayName:         displayName,
+		Tag:                 tag,
+		SpecialTag:          specialTag,
+		BannedAt:            bannedAt,
+		CreatedAt:           createdAt,
+		Balance:             u.Balance,
+		LastVisitAt:         lastVisitAt,
+		RequiresSudoku:      u.RequiresSudoku,
+		SudokuCooldownUntil: sudokuCooldownUntil,
 	}
 }
 
@@ -136,17 +148,23 @@ func toAdminUserFromSearch(u storage.SearchUsersAdminRow) *models.AdminUser {
 	if u.SpecialTag.Valid {
 		specialTag = &u.SpecialTag.String
 	}
+	var sudokuCooldownUntil *time.Time
+	if u.SudokuCooldownUntil.Valid {
+		sudokuCooldownUntil = &u.SudokuCooldownUntil.Time
+	}
 	return &models.AdminUser{
-		ID:          u.ID,
-		Username:    u.Username,
-		Role:        u.Role,
-		Gender:      gender,
-		DisplayName: displayName,
-		Tag:         tag,
-		SpecialTag:  specialTag,
-		BannedAt:    bannedAt,
-		CreatedAt:   createdAt,
-		Balance:     u.Balance,
-		LastVisitAt: lastVisitAt,
+		ID:                  u.ID,
+		Username:            u.Username,
+		Role:                u.Role,
+		Gender:              gender,
+		DisplayName:         displayName,
+		Tag:                 tag,
+		SpecialTag:          specialTag,
+		BannedAt:            bannedAt,
+		CreatedAt:           createdAt,
+		Balance:             u.Balance,
+		LastVisitAt:         lastVisitAt,
+		RequiresSudoku:      u.RequiresSudoku,
+		SudokuCooldownUntil: sudokuCooldownUntil,
 	}
 }

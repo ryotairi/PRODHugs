@@ -136,10 +136,14 @@ export const authApi = {
 
 // Hugs
 export const hugsApi = {
-  suggest: (userId: string, hugType?: string, comment?: string) =>
+  suggest: (userId: string, hugType?: string, comment?: string, captchaToken?: string) =>
     api.post(
       `/hugs/${userId}`,
-      hugType || comment ? { ...(hugType ? { hug_type: hugType } : {}), ...(comment ? { comment } : {}) } : undefined,
+      hugType || comment || captchaToken ? { 
+        ...(hugType ? { hug_type: hugType } : {}), 
+        ...(comment ? { comment } : {}),
+        ...(captchaToken ? { captcha_token: captchaToken } : {}) 
+      } : undefined,
     ),
   accept: (hugId: string) => api.post(`/hugs/${hugId}/accept`),
   decline: (hugId: string) => api.post(`/hugs/${hugId}/decline`),
@@ -226,7 +230,23 @@ export const adminApi = {
     api.put(`/admin/users/${userId}/password`, { password }),
   updateBalance: (userId: string, amount: number) =>
     api.put(`/admin/users/${userId}/balance`, { amount }),
+  updateRequiresSudoku: (userId: string, requiresSudoku: boolean) =>
+    api.put(`/admin/users/${userId}/requires-sudoku`, { requires_sudoku: requiresSudoku }),
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   createAnnouncement: (message: string) => api.post('/admin/announcements', { message }),
   deleteAnnouncement: (id: string) => api.delete(`/admin/announcements/${id}`),
 }
+
+// Captcha
+export const captchaApi = {
+  getSudoku: (targetId: string) => api.get<{ id: string; puzzle: number[][] }>('/captcha/sudoku', { params: { target_id: targetId } }),
+  verifyCell: (id: string, row: number, col: number, value: number) =>
+    api.post<{ correct: boolean; errors: number; failed: boolean }>(`/captcha/sudoku/${id}/verify-cell`, {
+      row,
+      col,
+      value,
+    }),
+  completeSudoku: (id: string) =>
+    api.post<{ captcha_token: string }>(`/captcha/sudoku/${id}/complete`),
+}
+

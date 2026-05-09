@@ -16,6 +16,7 @@ import {
   Trash2,
   Radio,
   Megaphone,
+  Puzzle,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { announcementsApi, adminApi } from '@/api/client'
@@ -355,6 +356,16 @@ const newSpecialTag = ref('')
 const savingSpecialTag = ref(false)
 const specialTagError = ref('')
 
+async function toggleRequiresSudoku(user: AdminUser) {
+  try {
+    await admin.updateRequiresSudoku(user.id, !user.requires_sudoku)
+    toast.success(`Судоку капча ${user.requires_sudoku ? 'включена' : 'отключена'} для ${user.username}`)
+  } catch (e) {
+    const parsed = parseBackendError(e)
+    toast.error(parsed.generalError ?? 'Ошибка сохранения')
+  }
+}
+
 function openSpecialTagDialog(user: AdminUser) {
   editingUser.value = user
   newSpecialTag.value = user.special_tag ?? ''
@@ -650,6 +661,10 @@ function formatDate(dateStr: string): string {
               <DropdownMenuItem @click="openSpecialTagDialog(user)">
                 <Tag class="size-4" />
                 Спецтег
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="toggleRequiresSudoku(user)">
+                <Puzzle class="size-4" />
+                {{ user.requires_sudoku ? 'Отключить Судоку' : 'Включить Судоку' }}
               </DropdownMenuItem>
               <DropdownMenuItem @click="openGenderDialog(user)">
                 <Venus class="size-4" />

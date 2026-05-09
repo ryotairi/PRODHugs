@@ -44,7 +44,12 @@ func (h *HugHandler) SuggestHug(ctx context.Context, req v1.SuggestHugRequestObj
 		comment = &c
 	}
 
-	hugResult, receiver, err := h.svc.SuggestHug(ctx, giverID, receiverID, hugType, comment)
+	var captchaToken *string
+	if req.Body != nil && req.Body.CaptchaToken != nil && *req.Body.CaptchaToken != "" {
+		captchaToken = req.Body.CaptchaToken
+	}
+
+	hugResult, receiver, err := h.svc.SuggestHug(ctx, giverID, receiverID, hugType, comment, captchaToken)
 	if err != nil {
 		if errors.Is(err, errorz.ErrHugTypeLocked) {
 			return v1.SuggestHug409JSONResponse{
@@ -77,6 +82,22 @@ func (h *HugHandler) SuggestHug(ctx context.Context, req v1.SuggestHugRequestObj
 		}
 		if errors.Is(err, errorz.ErrUserNotFound) {
 			return v1.SuggestHug404JSONResponse{NotFoundJSONResponse: v1.NotFoundJSONResponse{Code: v1.USERNOTFOUND, Message: "User not found"}}, nil
+		}
+		if err == errorz.ErrCaptchaRequired {
+			return v1.SuggestHug400JSONResponse{
+				BadRequestJSONResponse: v1.BadRequestJSONResponse{
+					Code:    v1.CAPTCHAREQUIRED,
+					Message: "Captcha required before hugging",
+				},
+			}, nil
+		}
+		if err == errorz.ErrCaptchaFailed {
+			return v1.SuggestHug400JSONResponse{
+				BadRequestJSONResponse: v1.BadRequestJSONResponse{
+					Code:    v1.CAPTCHAFAILED,
+					Message: "Invalid or expired captcha token",
+				},
+			}, nil
 		}
 		return nil, err
 	}

@@ -17,4 +17,6 @@ var (
 	ErrDeclineCooldownActive   = errors.New("decline cooldown is active")
 	ErrMaxSlotsReached         = errors.New("maximum hug slots reached")
 	ErrHugTypeLocked           = errors.New("hug type not unlocked for this pair")
+	ErrCaptchaRequired         = errors.New("captcha required")
+	ErrCaptchaFailed           = errors.New("captcha failed")
 )

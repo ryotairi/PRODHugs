@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import SudokuModal from '@/components/SudokuModal.vue'
 
 const props = defineProps<{
   userId: string
@@ -38,6 +39,7 @@ const hugsStore = useHugsStore()
 const loading = ref(false)
 const cooldown = ref<CooldownInfo | null>(null)
 const remaining = ref(0)
+const sudokuRemaining = ref(0)
 const btnRef = ref<HTMLButtonElement | null>(null)
 const intimacy = ref<IntimacyInfo | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
@@ -46,6 +48,12 @@ let timer: ReturnType<typeof setInterval> | null = null
 const showCommentDialog = ref(false)
 const commentText = ref('')
 const pendingHugType = ref<string | undefined>(undefined)
+
+// Sudoku state
+const showSudokuModal = ref(false)
+const cachedComment = ref<string | undefined>(undefined)
+
+const totalRemaining = computed(() => Math.max(remaining.value, sudokuRemaining.value))
 
 const availableHugTypes = computed<HugType[]>(() => {
   if (!intimacy.value) return ['standard']
@@ -71,7 +79,7 @@ const hasIncomingPending = computed(() => hugsStore.inbox.some((h) => h.giver_id
 const isDisabled = computed(
   () =>
     loading.value ||
-    remaining.value > 0 ||
+    totalRemaining.value > 0 ||
     allSlotsFull.value ||
     hasIncomingPending.value ||
     isPendingWithThisUser.value,
@@ -79,7 +87,7 @@ const isDisabled = computed(
 
 const buttonVariant = computed(() => {
   if (
-    remaining.value > 0 ||
+    totalRemaining.value > 0 ||
     allSlotsFull.value ||
     hasIncomingPending.value ||
     isPendingWithThisUser.value
@@ -92,6 +100,7 @@ async function loadCooldown() {
   try {
     cooldown.value = await hugsStore.getCooldown(props.userId)
     remaining.value = cooldown.value.remaining_seconds
+    updateSudokuRemaining()
     startTimer()
   } catch {
     // Ignore
@@ -103,17 +112,28 @@ async function loadCooldown() {
   }
 }
 
+function updateSudokuRemaining() {
+  if (!auth.user?.sudoku_cooldown_until) {
+    sudokuRemaining.value = 0
+    return
+  }
+  const end = new Date(auth.user.sudoku_cooldown_until).getTime()
+  const now = Date.now()
+  sudokuRemaining.value = Math.max(0, Math.floor((end - now) / 1000))
+}
+
 function startTimer() {
   if (timer) clearInterval(timer)
-  if (remaining.value > 0) {
-    timer = setInterval(() => {
-      remaining.value--
-      if (remaining.value <= 0) {
-        remaining.value = 0
-        if (timer) clearInterval(timer)
-      }
-    }, 1000)
-  }
+  timer = setInterval(() => {
+    if (remaining.value > 0) remaining.value--
+    updateSudokuRemaining()
+    
+    if (remaining.value <= 0 && sudokuRemaining.value <= 0) {
+      remaining.value = 0
+      sudokuRemaining.value = 0
+      if (timer) clearInterval(timer)
+    }
+  }, 1000)
 }
 
 let suggesting = false
@@ -124,17 +144,31 @@ function openCommentDialog(hugType?: string) {
   showCommentDialog.value = true
 }
 
-async function suggest(hugType?: string, comment?: string) {
+async function suggest(hugType?: string, comment?: string, captchaToken?: string) {
   if (suggesting || isDisabled.value) return
+  
+  if (auth.user?.requires_sudoku && !captchaToken) {
+    pendingHugType.value = hugType
+    cachedComment.value = comment
+    showSudokuModal.value = true
+    return
+  }
+  
   suggesting = true
   loading.value = true
   showCommentDialog.value = false
   try {
-    await hugsStore.suggestHug(props.userId, hugType, comment)
+    await hugsStore.suggestHug(props.userId, hugType, comment, captchaToken)
     toast.success(`Ты ${suggestVerb(auth.user?.gender)} обнимашку ${props.username}!`)
     emit('hugged')
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { message?: string } } }
+    const err = e as { response?: { data?: { message?: string, code?: string } } }
+    if (err.response?.data?.code === 'CAPTCHA_REQUIRED') {
+      pendingHugType.value = hugType
+      cachedComment.value = comment
+      showSudokuModal.value = true
+      return
+    }
     toast.error(err.response?.data?.message || `Не удалось предложить обнимашку ${props.username}`)
   } finally {
     loading.value = false
@@ -147,11 +181,32 @@ function sendWithComment() {
   suggest(pendingHugType.value, comment)
 }
 
+function handleSudokuSuccess(token: string) {
+  suggest(pendingHugType.value, cachedComment.value, token)
+}
+
+async function handleSudokuFailed() {
+  // Cooldown is set by backend, we should refresh auth user
+  await auth.fetchMe()
+  updateSudokuRemaining()
+  startTimer()
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
 }
+
+watch(
+  () => auth.user?.sudoku_cooldown_until,
+  () => {
+    updateSudokuRemaining()
+    if (sudokuRemaining.value > 0) {
+      startTimer()
+    }
+  },
+)
 
 onMounted(loadCooldown)
 onUnmounted(() => {
@@ -179,10 +234,10 @@ watch(
       class="rounded-[21px]"
     >
       <Loader2 v-if="loading" class="size-4 animate-spin" />
-      <Clock v-else-if="remaining > 0" class="size-4" />
+      <Clock v-else-if="totalRemaining > 0" class="size-4" />
       <Hourglass v-else-if="allSlotsFull || hasIncomingPending" class="size-4" />
       <Heart v-else class="size-4" />
-      <span v-if="remaining > 0">{{ formatTime(remaining) }}</span>
+      <span v-if="totalRemaining > 0">{{ formatTime(totalRemaining) }}</span>
       <span v-else-if="isPendingWithThisUser">Ожидание...</span>
       <span v-else-if="hasIncomingPending">Ждет твоего ответа</span>
       <span v-else-if="allSlotsFull">Все слоты заняты</span>
@@ -279,5 +334,12 @@ watch(
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <SudokuModal 
+      v-model:open="showSudokuModal" 
+      :target-id="props.userId"
+      @success="handleSudokuSuccess" 
+      @failed="handleSudokuFailed" 
+    />
   </div>
 </template>

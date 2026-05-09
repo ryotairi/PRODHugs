@@ -47,6 +47,8 @@ components:
         - HUG_TYPE_LOCKED
         - CANNOT_DELETE_ADMIN
         - COMMENT_TOO_LONG
+        - CAPTCHA_FAILED
+        - CAPTCHA_REQUIRED
 
     Error:
       type: object
@@ -85,6 +87,11 @@ components:
           type: string
           nullable: true
           maxLength: 20
+        requires_sudoku: { type: boolean }
+        sudoku_cooldown_until:
+          type: string
+          format: date-time
+          nullable: true
 
     AuthResponse:
       type: object
@@ -289,6 +296,11 @@ components:
         is_blocked: { type: boolean }
         intimacy:
           $ref: '#/components/schemas/IntimacyInfo'
+        requires_sudoku: { type: boolean }
+        sudoku_cooldown_until:
+          type: string
+          format: date-time
+          nullable: true
 
     LeaderboardEntry:
       type: object
@@ -529,6 +541,11 @@ components:
           format: date-time
           nullable: true
         balance: { type: integer }
+        requires_sudoku: { type: boolean }
+        sudoku_cooldown_until:
+          type: string
+          format: date-time
+          nullable: true
 
     AdminStats:
       type: object
@@ -641,6 +658,49 @@ components:
         id: { type: string, format: uuid }
         message: { type: string }
         created_at: { type: string, format: date-time }
+
+    SudokuPuzzleResponse:
+      type: object
+      required:
+        - id
+        - puzzle
+      properties:
+        id: { type: string, format: uuid }
+        puzzle:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+          description: "9x9 grid, 0 means empty"
+
+    SudokuVerifyRequest:
+      type: object
+      required:
+        - row
+        - col
+        - value
+      properties:
+        row: { type: integer, minimum: 0, maximum: 8 }
+        col: { type: integer, minimum: 0, maximum: 8 }
+        value: { type: integer, minimum: 1, maximum: 9 }
+
+    SudokuVerifyResponse:
+      type: object
+      required:
+        - correct
+        - errors
+      properties:
+        correct: { type: boolean }
+        errors: { type: integer }
+        failed: { type: boolean, description: "True if errors > 3" }
+
+    SudokuCompleteResponse:
+      type: object
+      required:
+        - captcha_token
+      properties:
+        captcha_token: { type: string }
 
   responses:
     BadRequest:
@@ -1274,6 +1334,9 @@ paths:
                   type: string
                   maxLength: 140
                   description: Optional comment visible only to sender and receiver (costs coins on accept)
+                captcha_token:
+                  type: string
+                  description: Required if the current user has requires_sudoku=true
               additionalProperties: false
       responses:
         '201':
@@ -2306,6 +2369,47 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /admin/users/{userId}/requires-sudoku:
+    put:
+      summary: Set whether a user requires sudoku captcha to hug
+      operationId: adminUpdateRequiresSudoku
+      security:
+        - BearerAuth: ["admin"]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requires_sudoku
+              properties:
+                requires_sudoku:
+                  type: boolean
+              additionalProperties: false
+      responses:
+        '200':
+          description: Setting updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /admin/users/{userId}:
     delete:
       summary: Permanently delete a user and all associated data
@@ -2322,6 +2426,90 @@ paths:
       responses:
         '204':
           description: User deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /captcha/sudoku:
+    get:
+      summary: Get a new Sudoku captcha puzzle
+      operationId: getSudokuCaptcha
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '200':
+          description: A new Sudoku puzzle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SudokuPuzzleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /captcha/sudoku/{id}/verify-cell:
+    post:
+      summary: Verify a single cell in the Sudoku
+      operationId: verifySudokuCell
+      security:
+        - BearerAuth: ["user", "admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SudokuVerifyRequest'
+      responses:
+        '200':
+          description: Cell verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SudokuVerifyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+  /captcha/sudoku/{id}/complete:
+    post:
+      summary: Complete the Sudoku and get a captcha token
+      operationId: completeSudoku
+      security:
+        - BearerAuth: ["user", "admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Captcha completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SudokuCompleteResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

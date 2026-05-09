@@ -29,7 +29,7 @@ const adminUpdateDisplayName = `-- name: AdminUpdateDisplayName :one
 UPDATE users
 SET display_name = $2
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type AdminUpdateDisplayNameParams struct {
@@ -53,6 +53,8 @@ func (q *Queries) AdminUpdateDisplayName(ctx context.Context, arg AdminUpdateDis
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -61,7 +63,7 @@ const adminUpdateGender = `-- name: AdminUpdateGender :one
 UPDATE users
 SET gender = $2
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type AdminUpdateGenderParams struct {
@@ -85,6 +87,8 @@ func (q *Queries) AdminUpdateGender(ctx context.Context, arg AdminUpdateGenderPa
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -105,11 +109,45 @@ func (q *Queries) AdminUpdatePassword(ctx context.Context, arg AdminUpdatePasswo
 	return err
 }
 
+const adminUpdateRequiresSudoku = `-- name: AdminUpdateRequiresSudoku :one
+UPDATE users
+SET requires_sudoku = $2
+WHERE id = $1
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
+`
+
+type AdminUpdateRequiresSudokuParams struct {
+	ID             uuid.UUID
+	RequiresSudoku bool
+}
+
+func (q *Queries) AdminUpdateRequiresSudoku(ctx context.Context, arg AdminUpdateRequiresSudokuParams) (User, error) {
+	row := q.db.QueryRow(ctx, adminUpdateRequiresSudoku, arg.ID, arg.RequiresSudoku)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.Role,
+		&i.Gender,
+		&i.BannedAt,
+		&i.HugSlots,
+		&i.CreatedAt,
+		&i.DisplayName,
+		&i.TelegramID,
+		&i.Tag,
+		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
+	)
+	return i, err
+}
+
 const adminUpdateSpecialTag = `-- name: AdminUpdateSpecialTag :one
 UPDATE users
 SET special_tag = $2
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type AdminUpdateSpecialTagParams struct {
@@ -133,6 +171,8 @@ func (q *Queries) AdminUpdateSpecialTag(ctx context.Context, arg AdminUpdateSpec
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -141,7 +181,7 @@ const adminUpdateTag = `-- name: AdminUpdateTag :one
 UPDATE users
 SET tag = $2
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type AdminUpdateTagParams struct {
@@ -165,6 +205,8 @@ func (q *Queries) AdminUpdateTag(ctx context.Context, arg AdminUpdateTagParams) 
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -173,7 +215,7 @@ const adminUpdateUsername = `-- name: AdminUpdateUsername :one
 UPDATE users
 SET username = $2
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type AdminUpdateUsernameParams struct {
@@ -197,6 +239,8 @@ func (q *Queries) AdminUpdateUsername(ctx context.Context, arg AdminUpdateUserna
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -205,7 +249,7 @@ const banUser = `-- name: BanUser :one
 UPDATE users
 SET banned_at = NOW()
 WHERE id = $1 AND role != 'admin'
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 func (q *Queries) BanUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -224,6 +268,8 @@ func (q *Queries) BanUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -232,7 +278,7 @@ const clearUserTelegramID = `-- name: ClearUserTelegramID :one
 UPDATE users
 SET telegram_id = NULL
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 func (q *Queries) ClearUserTelegramID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -251,6 +297,8 @@ func (q *Queries) ClearUserTelegramID(ctx context.Context, id uuid.UUID) (User, 
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -282,7 +330,7 @@ INSERT INTO users (username, password, role, gender, created_at)
 VALUES (
     $1, $2, $3, $4, NOW()
 )
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type CreateUserParams struct {
@@ -313,6 +361,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -466,7 +516,7 @@ func (q *Queries) GetRecentHugsFeed(ctx context.Context, arg GetRecentHugsFeedPa
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+SELECT id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 FROM users
 WHERE id = $1
 `
@@ -487,12 +537,14 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
 
 const getUserByTelegramID = `-- name: GetUserByTelegramID :one
-SELECT id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag FROM users WHERE telegram_id = $1
+SELECT id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until FROM users WHERE telegram_id = $1
 `
 
 func (q *Queries) GetUserByTelegramID(ctx context.Context, telegramID pgtype.Int8) (User, error) {
@@ -511,12 +563,14 @@ func (q *Queries) GetUserByTelegramID(ctx context.Context, telegramID pgtype.Int
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+SELECT id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 FROM users
 WHERE username = $1
 `
@@ -537,6 +591,8 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -681,7 +737,7 @@ func (q *Queries) ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]L
 }
 
 const listUsersAdmin = `-- name: ListUsersAdmin :many
-SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at,
+SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.requires_sudoku, u.sudoku_cooldown_until,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -701,17 +757,19 @@ type ListUsersAdminParams struct {
 }
 
 type ListUsersAdminRow struct {
-	ID          uuid.UUID
-	Username    string
-	Role        string
-	Gender      pgtype.Text
-	DisplayName pgtype.Text
-	Tag         pgtype.Text
-	SpecialTag  pgtype.Text
-	BannedAt    pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	Balance     int32
-	LastVisitAt pgtype.Timestamptz
+	ID                  uuid.UUID
+	Username            string
+	Role                string
+	Gender              pgtype.Text
+	DisplayName         pgtype.Text
+	Tag                 pgtype.Text
+	SpecialTag          pgtype.Text
+	BannedAt            pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	RequiresSudoku      bool
+	SudokuCooldownUntil pgtype.Timestamptz
+	Balance             int32
+	LastVisitAt         pgtype.Timestamptz
 }
 
 func (q *Queries) ListUsersAdmin(ctx context.Context, arg ListUsersAdminParams) ([]ListUsersAdminRow, error) {
@@ -733,6 +791,8 @@ func (q *Queries) ListUsersAdmin(ctx context.Context, arg ListUsersAdminParams) 
 			&i.SpecialTag,
 			&i.BannedAt,
 			&i.CreatedAt,
+			&i.RequiresSudoku,
+			&i.SudokuCooldownUntil,
 			&i.Balance,
 			&i.LastVisitAt,
 		); err != nil {
@@ -816,7 +876,7 @@ func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]Sea
 }
 
 const searchUsersAdmin = `-- name: SearchUsersAdmin :many
-SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at,
+SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.requires_sudoku, u.sudoku_cooldown_until,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -838,17 +898,19 @@ type SearchUsersAdminParams struct {
 }
 
 type SearchUsersAdminRow struct {
-	ID          uuid.UUID
-	Username    string
-	Role        string
-	Gender      pgtype.Text
-	DisplayName pgtype.Text
-	Tag         pgtype.Text
-	SpecialTag  pgtype.Text
-	BannedAt    pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	Balance     int32
-	LastVisitAt pgtype.Timestamptz
+	ID                  uuid.UUID
+	Username            string
+	Role                string
+	Gender              pgtype.Text
+	DisplayName         pgtype.Text
+	Tag                 pgtype.Text
+	SpecialTag          pgtype.Text
+	BannedAt            pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	RequiresSudoku      bool
+	SudokuCooldownUntil pgtype.Timestamptz
+	Balance             int32
+	LastVisitAt         pgtype.Timestamptz
 }
 
 func (q *Queries) SearchUsersAdmin(ctx context.Context, arg SearchUsersAdminParams) ([]SearchUsersAdminRow, error) {
@@ -870,6 +932,8 @@ func (q *Queries) SearchUsersAdmin(ctx context.Context, arg SearchUsersAdminPara
 			&i.SpecialTag,
 			&i.BannedAt,
 			&i.CreatedAt,
+			&i.RequiresSudoku,
+			&i.SudokuCooldownUntil,
 			&i.Balance,
 			&i.LastVisitAt,
 		); err != nil {
@@ -883,11 +947,27 @@ func (q *Queries) SearchUsersAdmin(ctx context.Context, arg SearchUsersAdminPara
 	return items, nil
 }
 
+const setSudokuCooldown = `-- name: SetSudokuCooldown :exec
+UPDATE users
+SET sudoku_cooldown_until = $2
+WHERE id = $1
+`
+
+type SetSudokuCooldownParams struct {
+	ID                  uuid.UUID
+	SudokuCooldownUntil pgtype.Timestamptz
+}
+
+func (q *Queries) SetSudokuCooldown(ctx context.Context, arg SetSudokuCooldownParams) error {
+	_, err := q.db.Exec(ctx, setSudokuCooldown, arg.ID, arg.SudokuCooldownUntil)
+	return err
+}
+
 const setUserTelegramID = `-- name: SetUserTelegramID :one
 UPDATE users
 SET telegram_id = $2
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type SetUserTelegramIDParams struct {
@@ -911,6 +991,8 @@ func (q *Queries) SetUserTelegramID(ctx context.Context, arg SetUserTelegramIDPa
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -919,7 +1001,7 @@ const unbanUser = `-- name: UnbanUser :one
 UPDATE users
 SET banned_at = NULL
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 func (q *Queries) UnbanUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -938,6 +1020,8 @@ func (q *Queries) UnbanUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }
@@ -962,7 +1046,7 @@ const updateUserSettings = `-- name: UpdateUserSettings :one
 UPDATE users
 SET gender = $2, display_name = $3, tag = $4
 WHERE id = $1
-RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag
+RETURNING id, username, password, role, gender, banned_at, hug_slots, created_at, display_name, telegram_id, tag, special_tag, requires_sudoku, sudoku_cooldown_until
 `
 
 type UpdateUserSettingsParams struct {
@@ -993,6 +1077,8 @@ func (q *Queries) UpdateUserSettings(ctx context.Context, arg UpdateUserSettings
 		&i.TelegramID,
 		&i.Tag,
 		&i.SpecialTag,
+		&i.RequiresSudoku,
+		&i.SudokuCooldownUntil,
 	)
 	return i, err
 }

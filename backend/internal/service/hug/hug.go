@@ -20,7 +20,7 @@ const (
 
 // SuggestHug creates a pending hug suggestion (replaces old SendHug).
 // Returns the created hug and the receiver's user data (for the response).
-func (s *service) SuggestHug(ctx context.Context, giverID, receiverID uuid.UUID, hugType string, comment *string) (*models.Hug, *models.User, error) {
+func (s *service) SuggestHug(ctx context.Context, giverID, receiverID uuid.UUID, hugType string, comment *string, captchaToken *string) (*models.Hug, *models.User, error) {
 	if giverID == receiverID {
 		return nil, nil, errorz.ErrCannotHugSelf
 	}
@@ -46,6 +46,22 @@ func (s *service) SuggestHug(ctx context.Context, giverID, receiverID uuid.UUID,
 	receiver, err := s.userRepo.GetByID(ctx, receiverID)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	giver, err := s.userRepo.GetByID(ctx, giverID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if giver.RequiresSudoku {
+		if captchaToken == nil || *captchaToken == "" {
+			return nil, nil, errorz.ErrCaptchaRequired
+		}
+		
+		tokenUserID, err := s.jwtManager.ParseCaptchaToken(*captchaToken)
+		if err != nil || tokenUserID != giverID {
+			return nil, nil, errorz.ErrCaptchaFailed
+		}
 	}
 
 	// Check intimacy-gated hug type

@@ -85,6 +85,10 @@ type HugSuggestionCallback func(targetUserID uuid.UUID, item *models.PendingHugI
 type HugDeclinedCallback func(targetUserID uuid.UUID, hugID uuid.UUID, receiverID uuid.UUID)
 type HugCancelledCallback func(targetUserID uuid.UUID, hugID uuid.UUID)
 
+type jwtManager interface {
+	ParseCaptchaToken(tokenString string) (uuid.UUID, error)
+}
+
 type service struct {
 	hugRepo      hugRepo
 	balanceRepo  balanceRepo
@@ -92,6 +96,7 @@ type service struct {
 	userRepo     userRepo
 	blockRepo    blockRepo
 	intimacyRepo intimacyRepo
+	jwtManager   jwtManager
 	tx           transactor
 
 	onHugCompleted  HugCompletedCallback
@@ -104,7 +109,7 @@ type service struct {
 	activityCache    *cache.TTL[string, []*models.HugActivityItem]
 }
 
-func New(hugRepo hugRepo, balanceRepo balanceRepo, dailyRepo dailyRewardRepo, userRepo userRepo, blockRepo blockRepo, intimacyRepo intimacyRepo, tx transactor) *service {
+func New(hugRepo hugRepo, balanceRepo balanceRepo, dailyRepo dailyRewardRepo, userRepo userRepo, blockRepo blockRepo, intimacyRepo intimacyRepo, jwtManager jwtManager, tx transactor) *service {
 	return &service{
 		hugRepo:          hugRepo,
 		balanceRepo:      balanceRepo,
@@ -112,6 +117,7 @@ func New(hugRepo hugRepo, balanceRepo balanceRepo, dailyRepo dailyRewardRepo, us
 		userRepo:         userRepo,
 		blockRepo:        blockRepo,
 		intimacyRepo:     intimacyRepo,
+		jwtManager:       jwtManager,
 		tx:               tx,
 		leaderboardCache: cache.New[string, []*models.LeaderboardEntry](30 * time.Second),
 		activityCache:    cache.New[string, []*models.HugActivityItem](2 * time.Minute),

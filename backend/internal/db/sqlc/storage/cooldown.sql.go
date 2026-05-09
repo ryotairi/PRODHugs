@@ -82,6 +82,24 @@ func (q *Queries) SetDeclineCooldown(ctx context.Context, arg SetDeclineCooldown
 	return err
 }
 
+const setSudokuPenaltyCooldown = `-- name: SetSudokuPenaltyCooldown :exec
+INSERT INTO hug_cooldowns (user_a_id, user_b_id, decline_cooldown_until, cooldown_seconds, last_hug_at)
+VALUES (LEAST($1::UUID, $2::UUID), GREATEST($1::UUID, $2::UUID), $3, 3600, '2000-01-01'::timestamptz)
+ON CONFLICT (user_a_id, user_b_id)
+DO UPDATE SET decline_cooldown_until = $3
+`
+
+type SetSudokuPenaltyCooldownParams struct {
+	Column1              uuid.UUID
+	Column2              uuid.UUID
+	DeclineCooldownUntil pgtype.Timestamptz
+}
+
+func (q *Queries) SetSudokuPenaltyCooldown(ctx context.Context, arg SetSudokuPenaltyCooldownParams) error {
+	_, err := q.db.Exec(ctx, setSudokuPenaltyCooldown, arg.Column1, arg.Column2, arg.DeclineCooldownUntil)
+	return err
+}
+
 const upsertCooldown = `-- name: UpsertCooldown :one
 INSERT INTO hug_cooldowns (user_a_id, user_b_id, cooldown_seconds)
 VALUES (LEAST($1::UUID, $2::UUID), GREATEST($1::UUID, $2::UUID), $3)
