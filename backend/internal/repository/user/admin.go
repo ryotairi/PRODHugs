@@ -204,12 +204,12 @@ func (r *repo) AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialT
 	return toModelUser(u), nil
 }
 
-func (r *repo) AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error) {
+func (r *repo) AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error) {
 	q := repository.Queries(ctx, r.q)
 
-	u, err := q.AdminUpdateRequiresSudoku(ctx, storage.AdminUpdateRequiresSudokuParams{
-		ID:             id,
-		RequiresSudoku: requiresSudoku,
+	u, err := q.AdminUpdateCaptchaType(ctx, storage.AdminUpdateCaptchaTypeParams{
+		ID:          id,
+		CaptchaType: captchaType,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

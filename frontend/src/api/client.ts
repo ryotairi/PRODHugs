@@ -128,7 +128,7 @@ export const authApi = {
   initTelegramLogin: () =>
     api.post<{ bot_url: string; poll_token: string }>('/auth/telegram/init'),
   pollTelegramLogin: (pollToken: string) =>
-    api.post<{ token: string; user: { id: string; username: string; role: string } }>(
+    api.post<{ token: string; user: any }>(
       '/auth/telegram/poll',
       { poll_token: pollToken },
     ),
@@ -230,8 +230,8 @@ export const adminApi = {
     api.put(`/admin/users/${userId}/password`, { password }),
   updateBalance: (userId: string, amount: number) =>
     api.put(`/admin/users/${userId}/balance`, { amount }),
-  updateRequiresSudoku: (userId: string, requiresSudoku: boolean) =>
-    api.put(`/admin/users/${userId}/requires-sudoku`, { requires_sudoku: requiresSudoku }),
+  updateCaptchaType: (userId: string, captchaType: string) =>
+    api.put(`/admin/users/${userId}/captcha-type`, { captcha_type: captchaType }),
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   createAnnouncement: (message: string) => api.post('/admin/announcements', { message }),
   deleteAnnouncement: (id: string) => api.delete(`/admin/announcements/${id}`),
@@ -248,5 +248,10 @@ export const captchaApi = {
     }),
   completeSudoku: (id: string) =>
     api.post<{ captcha_token: string }>(`/captcha/sudoku/${id}/complete`),
+  getCasino: () => api.get<{ id: string; expires_at: string }>('/captcha/casino'),
+  spinCasino: (id: string) =>
+    api.post<{ win: boolean; captcha_token?: string; cooldown_until?: string }>(
+      `/captcha/casino/${id}/spin`,
+    ),
 }
 

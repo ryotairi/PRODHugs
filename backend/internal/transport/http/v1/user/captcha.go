@@ -65,3 +65,41 @@ func (h *UserHandler) CompleteSudoku(ctx context.Context, req v1.CompleteSudokuR
 		CaptchaToken: token,
 	}, nil
 }
+
+func (h *UserHandler) GetCasinoCaptcha(ctx context.Context, req v1.GetCasinoCaptchaRequestObject) (v1.GetCasinoCaptchaResponseObject, error) {
+	userID := ctx.Value(middleware.UserIDContextKey).(uuid.UUID)
+
+	captchaID, expiresAt, err := h.svc.GenerateCasinoCaptcha(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1.GetCasinoCaptcha200JSONResponse{
+		Id:        captchaID,
+		ExpiresAt: expiresAt,
+	}, nil
+}
+
+func (h *UserHandler) SpinCasino(ctx context.Context, req v1.SpinCasinoRequestObject) (v1.SpinCasinoResponseObject, error) {
+	userID := ctx.Value(middleware.UserIDContextKey).(uuid.UUID)
+
+	res, err := h.svc.SpinCasino(ctx, req.Id, userID)
+	if err != nil {
+		if err == errorz.ErrCaptchaNotFound {
+			return v1.SpinCasino404JSONResponse{}, nil
+		}
+		if err == errorz.ErrCaptchaForbidden {
+			return v1.SpinCasino403JSONResponse{}, nil
+		}
+		if err == errorz.ErrCaptchaGone {
+			return v1.SpinCasino410JSONResponse{}, nil
+		}
+		return nil, err
+	}
+
+	return v1.SpinCasino200JSONResponse{
+		Win:           res.Win,
+		CaptchaToken:  &res.CaptchaToken,
+		CooldownUntil: res.CooldownUntil,
+	}, nil
+}

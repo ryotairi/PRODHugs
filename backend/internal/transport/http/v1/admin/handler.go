@@ -21,7 +21,7 @@ type service interface {
 	AdminUpdateDisplayName(ctx context.Context, id uuid.UUID, displayName *string) (*models.User, error)
 	AdminUpdateTag(ctx context.Context, id uuid.UUID, tag *string) (*models.User, error)
 	AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialTag *string) (*models.User, error)
-	AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error)
+	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
 	CreateAnnouncement(ctx context.Context, adminID uuid.UUID, message string) (*models.Announcement, error)
 	DeactivateAnnouncement(ctx context.Context, id uuid.UUID) error
@@ -37,15 +37,15 @@ func New(svc service) *AdminHandler {
 
 func toV1AdminUser(u *models.User) v1.AdminUser {
 	au := v1.AdminUser{
-		Id:          u.ID,
-		Username:    u.Username,
-		Role:        v1.AdminUserRole(u.Role),
-		Balance:     0, // Not available from User model; frontend updates locally
-		DisplayName: u.DisplayName,
-		Tag:         u.Tag,
-		SpecialTag:  u.SpecialTag,
-		RequiresSudoku: &u.RequiresSudoku,
-		SudokuCooldownUntil: u.SudokuCooldownUntil,
+		Id:                   u.ID,
+		Username:             u.Username,
+		Role:                 v1.AdminUserRole(u.Role),
+		Balance:              0, // Not available from User model; frontend updates locally
+		DisplayName:          u.DisplayName,
+		Tag:                  u.Tag,
+		SpecialTag:           u.SpecialTag,
+		CaptchaType:          v1.CaptchaType(u.CaptchaType),
+		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)
@@ -59,17 +59,17 @@ func toV1AdminUser(u *models.User) v1.AdminUser {
 
 func toV1AdminUserFromAdmin(u *models.AdminUser) v1.AdminUser {
 	au := v1.AdminUser{
-		Id:          u.ID,
-		Username:    u.Username,
-		Role:        v1.AdminUserRole(u.Role),
-		Balance:     int(u.Balance),
-		CreatedAt:   u.CreatedAt,
-		DisplayName: u.DisplayName,
-		Tag:         u.Tag,
-		SpecialTag:  u.SpecialTag,
-		LastVisitAt: u.LastVisitAt,
-		RequiresSudoku: &u.RequiresSudoku,
-		SudokuCooldownUntil: u.SudokuCooldownUntil,
+		Id:                   u.ID,
+		Username:             u.Username,
+		Role:                 v1.AdminUserRole(u.Role),
+		Balance:              int(u.Balance),
+		CreatedAt:            u.CreatedAt,
+		DisplayName:          u.DisplayName,
+		Tag:                  u.Tag,
+		SpecialTag:           u.SpecialTag,
+		LastVisitAt:          u.LastVisitAt,
+		CaptchaType:          v1.CaptchaType(u.CaptchaType),
+		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)

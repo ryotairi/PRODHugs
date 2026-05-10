@@ -15,8 +15,8 @@ export interface User {
   tag?: string | null
   special_tag?: string | null
   telegram_id?: number | null
-  requires_sudoku?: boolean
-  sudoku_cooldown_until?: string | null
+  captcha_type: 'none' | 'sudoku' | 'casino'
+  captcha_cooldown_until?: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {

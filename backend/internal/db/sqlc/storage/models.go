@@ -29,6 +29,14 @@ type Balance struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type CasinoCaptcha struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Passed    bool
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type DailyReward struct {
 	UserID        uuid.UUID
 	LastClaimedAt pgtype.Timestamptz
@@ -94,20 +102,20 @@ type SudokuCaptcha struct {
 }
 
 type User struct {
-	ID                  uuid.UUID
-	Username            string
-	Password            string
-	Role                string
-	Gender              pgtype.Text
-	BannedAt            pgtype.Timestamptz
-	HugSlots            int32
-	CreatedAt           pgtype.Timestamptz
-	DisplayName         pgtype.Text
-	TelegramID          pgtype.Int8
-	Tag                 pgtype.Text
-	SpecialTag          pgtype.Text
-	RequiresSudoku      bool
-	SudokuCooldownUntil pgtype.Timestamptz
+	ID                   uuid.UUID
+	Username             string
+	Password             string
+	Role                 string
+	Gender               pgtype.Text
+	BannedAt             pgtype.Timestamptz
+	HugSlots             int32
+	CreatedAt            pgtype.Timestamptz
+	DisplayName          pgtype.Text
+	TelegramID           pgtype.Int8
+	Tag                  pgtype.Text
+	SpecialTag           pgtype.Text
+	CaptchaCooldownUntil pgtype.Timestamptz
+	CaptchaType          string
 }
 
 type UserBlock struct {

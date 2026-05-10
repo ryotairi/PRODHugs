@@ -15,8 +15,8 @@ export interface AdminUser {
   created_at?: string | null
   last_visit_at?: string | null
   balance: number
-  requires_sudoku?: boolean
-  sudoku_cooldown_until?: string | null
+  captcha_type: 'none' | 'sudoku' | 'casino'
+  captcha_cooldown_until?: string | null
 }
 
 export interface AdminStats {
@@ -125,8 +125,8 @@ export const useAdminStore = defineStore('admin', () => {
     return updated
   }
 
-  async function updateRequiresSudoku(userId: string, requiresSudoku: boolean) {
-    const res = await adminApi.updateRequiresSudoku(userId, requiresSudoku)
+  async function updateCaptchaType(userId: string, captchaType: AdminUser['captcha_type']) {
+    const res = await adminApi.updateCaptchaType(userId, captchaType)
     const updated: AdminUser = res.data
     const idx = users.value.findIndex((u) => u.id === userId)
     if (idx !== -1) users.value[idx] = updated
@@ -167,7 +167,7 @@ export const useAdminStore = defineStore('admin', () => {
     updateDisplayName,
     updateTag,
     updateSpecialTag,
-    updateRequiresSudoku,
+    updateCaptchaType,
     updatePassword,
     updateBalance,
     deleteUser,

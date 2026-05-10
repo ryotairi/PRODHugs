@@ -127,8 +127,8 @@ export interface UserProfile {
   mutual_received?: number
   is_blocked?: boolean
   intimacy?: IntimacyInfo | null
-  requires_sudoku?: boolean
-  sudoku_cooldown_until?: string | null
+  captcha_type: 'none' | 'sudoku' | 'casino'
+  captcha_cooldown_until?: string | null
 }
 
 export interface BlockedUser {

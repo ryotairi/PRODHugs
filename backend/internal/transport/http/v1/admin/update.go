@@ -77,11 +77,11 @@ func (h *AdminHandler) AdminUpdatePassword(ctx context.Context, req v1.AdminUpda
 	}, nil
 }
 
-func (h *AdminHandler) AdminUpdateRequiresSudoku(ctx context.Context, req v1.AdminUpdateRequiresSudokuRequestObject) (v1.AdminUpdateRequiresSudokuResponseObject, error) {
-	u, err := h.svc.AdminUpdateRequiresSudoku(ctx, req.UserId, req.Body.RequiresSudoku)
+func (h *AdminHandler) AdminUpdateCaptchaType(ctx context.Context, req v1.AdminUpdateCaptchaTypeRequestObject) (v1.AdminUpdateCaptchaTypeResponseObject, error) {
+	u, err := h.svc.AdminUpdateCaptchaType(ctx, req.UserId, string(req.Body.CaptchaType))
 	if err != nil {
 		if errors.Is(err, errorz.ErrUserNotFound) {
-			return v1.AdminUpdateRequiresSudoku404JSONResponse{
+			return v1.AdminUpdateCaptchaType404JSONResponse{
 				NotFoundJSONResponse: v1.NotFoundJSONResponse{
 					Message: "user not found",
 					Code:    v1.USERNOTFOUND,
@@ -91,5 +91,5 @@ func (h *AdminHandler) AdminUpdateRequiresSudoku(ctx context.Context, req v1.Adm
 		return nil, err
 	}
 
-	return v1.AdminUpdateRequiresSudoku200JSONResponse(toV1AdminUser(u)), nil
+	return v1.AdminUpdateCaptchaType200JSONResponse(toV1AdminUser(u)), nil
 }

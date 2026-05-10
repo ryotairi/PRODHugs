@@ -75,7 +75,7 @@ func (s *service) VerifySudokuCell(ctx context.Context, captchaID uuid.UUID, use
 	if updated.Errors > 3 {
 		// Penalty: 10 minutes cooldown
 		cooldownUntil := time.Now().Add(10 * time.Minute)
-		_ = s.repo.SetSudokuCooldown(ctx, userID, cooldownUntil)
+		_ = s.repo.SetCaptchaCooldown(ctx, userID, cooldownUntil)
 		_ = s.repo.DeleteSudokuCaptcha(ctx, captchaID)
 		return &CaptchaResult{
 			Correct: false,
@@ -116,4 +116,70 @@ func (s *service) CompleteSudoku(ctx context.Context, captchaID uuid.UUID, userI
 		return "", err
 	}
 	return token, nil
+}
+
+func (s *service) GenerateCasinoCaptcha(ctx context.Context, userID uuid.UUID) (uuid.UUID, time.Time, error) {
+	expiresAt := time.Now().Add(10 * time.Minute)
+
+	captcha, err := s.repo.CreateCasinoCaptcha(ctx, userID, expiresAt)
+	if err != nil {
+		return uuid.Nil, time.Time{}, fmt.Errorf("failed to create casino captcha: %w", err)
+	}
+
+	return captcha.ID, captcha.ExpiresAt.Time, nil
+}
+
+type CasinoSpinResult struct {
+	Win           bool
+	CaptchaToken  string
+	CooldownUntil *time.Time
+}
+
+func (s *service) SpinCasino(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID) (*CasinoSpinResult, error) {
+	captcha, err := s.repo.GetCasinoCaptcha(ctx, captchaID)
+	if err != nil {
+		return nil, errorz.ErrCaptchaNotFound
+	}
+
+	if captcha.UserID != userID {
+		return nil, errorz.ErrCaptchaForbidden
+	}
+
+	if captcha.Passed {
+		return nil, errorz.ErrCaptchaGone
+	}
+
+	if captcha.ExpiresAt.Time.Before(time.Now()) {
+		return nil, errorz.ErrCaptchaGone
+	}
+
+	// 1 in 4 chance to win
+	win := s.rng.IntN(4) == 0
+
+	if win {
+		_, err = s.repo.MarkCasinoPassed(ctx, captchaID)
+		if err != nil {
+			return nil, err
+		}
+
+		token, err := s.jwtManager.GenerateCaptchaToken(userID)
+		if err != nil {
+			return nil, err
+		}
+
+		return &CasinoSpinResult{
+			Win:          true,
+			CaptchaToken: token,
+		}, nil
+	}
+
+	// Loss: 10 minutes cooldown
+	cooldownUntil := time.Now().Add(10 * time.Minute)
+	_ = s.repo.SetCaptchaCooldown(ctx, userID, cooldownUntil)
+	_ = s.repo.DeleteCasinoCaptcha(ctx, captchaID)
+
+	return &CasinoSpinResult{
+		Win:           false,
+		CooldownUntil: &cooldownUntil,
+	}, nil
 }

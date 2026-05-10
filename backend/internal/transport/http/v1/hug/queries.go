@@ -200,9 +200,9 @@ func (h *HugHandler) GetUserProfile(ctx context.Context, req v1.GetUserProfileRe
 		gender = &g
 	}
 
-	var sudokuCooldownUntil *time.Time
-	if user.SudokuCooldownUntil != nil {
-		sudokuCooldownUntil = user.SudokuCooldownUntil
+	var captchaCooldownUntil *time.Time
+	if user.CaptchaCooldownUntil != nil {
+		captchaCooldownUntil = user.CaptchaCooldownUntil
 	}
 
 	var balAmt *int
@@ -222,24 +222,24 @@ func (h *HugHandler) GetUserProfile(ctx context.Context, req v1.GetUserProfileRe
 	}
 
 	resp := v1.GetUserProfile200JSONResponse{
-		Id:                  user.ID,
-		Username:            user.Username,
-		Role:                user.Role,
-		Gender:              gender,
-		DisplayName:         user.DisplayName,
-		Tag:                 user.Tag,
-		SpecialTag:          user.SpecialTag,
-		HugsGiven:           int(stats.HugsGiven),
-		HugsReceived:        int(stats.HugsReceived),
-		TotalHugs:           int(stats.TotalHugs),
-		Rank:                rank,
-		Balance:             balAmt,
-		MutualTotal:         mutTot,
-		MutualGiven:         mutGiv,
-		MutualReceived:      mutRec,
-		IsBlocked:           &isBlocked,
-		RequiresSudoku:      &user.RequiresSudoku,
-		SudokuCooldownUntil: sudokuCooldownUntil,
+		Id:                   user.ID,
+		Username:             user.Username,
+		Role:                 user.Role,
+		Gender:               gender,
+		DisplayName:          user.DisplayName,
+		Tag:                  user.Tag,
+		SpecialTag:           user.SpecialTag,
+		HugsGiven:            int(stats.HugsGiven),
+		HugsReceived:         int(stats.HugsReceived),
+		TotalHugs:            int(stats.TotalHugs),
+		Rank:                 rank,
+		Balance:              balAmt,
+		MutualTotal:          mutTot,
+		MutualGiven:          mutGiv,
+		MutualReceived:       mutRec,
+		IsBlocked:            &isBlocked,
+		CaptchaType:          v1.CaptchaType(user.CaptchaType),
+		CaptchaCooldownUntil: captchaCooldownUntil,
 	}
 
 	if intimacy != nil {

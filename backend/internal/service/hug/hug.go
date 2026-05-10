@@ -53,7 +53,7 @@ func (s *service) SuggestHug(ctx context.Context, giverID, receiverID uuid.UUID,
 		return nil, nil, err
 	}
 
-	if giver.RequiresSudoku {
+	if giver.CaptchaType != "none" {
 		if captchaToken == nil || *captchaToken == "" {
 			return nil, nil, errorz.ErrCaptchaRequired
 		}

@@ -7,6 +7,7 @@ import (
 	"go-service-template/internal/telegram"
 	userService "go-service-template/internal/service/user"
 	v1 "go-service-template/internal/transport/http/v1"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +28,8 @@ type service interface {
 	GenerateSudokuCaptcha(ctx context.Context, userID uuid.UUID) (uuid.UUID, [][]int, error)
 	VerifySudokuCell(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID, row, col, value int) (*userService.CaptchaResult, error)
 	CompleteSudoku(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID) (string, error)
+	GenerateCasinoCaptcha(ctx context.Context, userID uuid.UUID) (uuid.UUID, time.Time, error)
+	SpinCasino(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID) (*userService.CasinoSpinResult, error)
 }
 
 type UserHandler struct {
@@ -50,15 +53,15 @@ func (h *UserHandler) SetTelegramLoginStore(store *telegram.LoginStore, botUsern
 
 func toV1User(u *models.User) v1.User {
 	user := v1.User{
-		Id:          u.ID,
-		Username:    u.Username,
-		Role:        v1.UserRole(u.Role),
-		DisplayName: u.DisplayName,
-		Tag:         u.Tag,
-		SpecialTag:  u.SpecialTag,
-		TelegramId:  u.TelegramID,
-		RequiresSudoku: &u.RequiresSudoku,
-		SudokuCooldownUntil: u.SudokuCooldownUntil,
+		Id:                   u.ID,
+		Username:             u.Username,
+		Role:                 v1.UserRole(u.Role),
+		DisplayName:          u.DisplayName,
+		Tag:                  u.Tag,
+		SpecialTag:           u.SpecialTag,
+		TelegramId:           u.TelegramID,
+		CaptchaType:          v1.CaptchaType(u.CaptchaType),
+		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)

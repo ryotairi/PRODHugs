@@ -79,6 +79,6 @@ func (s *service) AdminUpdateBalance(ctx context.Context, id uuid.UUID, amount i
 	return s.balanceRepo.AdminSetBalance(ctx, id, amount)
 }
 
-func (s *service) AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error) {
-	return s.repo.AdminUpdateRequiresSudoku(ctx, id, requiresSudoku)
+func (s *service) AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error) {
+	return s.repo.AdminUpdateCaptchaType(ctx, id, captchaType)
 }

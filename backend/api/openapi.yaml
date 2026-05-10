@@ -59,12 +59,20 @@ components:
         code: { $ref: '#/components/schemas/ErrorCode' }
         message: { type: string }
 
+    CaptchaType:
+      type: string
+      enum:
+        - none
+        - sudoku
+        - casino
+
     User:
       type: object
       required:
         - id
         - username
         - role
+        - captcha_type
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -87,8 +95,9 @@ components:
           type: string
           nullable: true
           maxLength: 20
-        requires_sudoku: { type: boolean }
-        sudoku_cooldown_until:
+        captcha_type:
+          $ref: '#/components/schemas/CaptchaType'
+        captcha_cooldown_until:
           type: string
           format: date-time
           nullable: true
@@ -270,6 +279,7 @@ components:
         - hugs_received
         - total_hugs
         - rank
+        - captcha_type
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -296,8 +306,9 @@ components:
         is_blocked: { type: boolean }
         intimacy:
           $ref: '#/components/schemas/IntimacyInfo'
-        requires_sudoku: { type: boolean }
-        sudoku_cooldown_until:
+        captcha_type:
+          $ref: '#/components/schemas/CaptchaType'
+        captcha_cooldown_until:
           type: string
           format: date-time
           nullable: true
@@ -513,6 +524,7 @@ components:
         - username
         - role
         - balance
+        - captcha_type
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -541,8 +553,9 @@ components:
           format: date-time
           nullable: true
         balance: { type: integer }
-        requires_sudoku: { type: boolean }
-        sudoku_cooldown_until:
+        captcha_type:
+          $ref: '#/components/schemas/CaptchaType'
+        captcha_cooldown_until:
           type: string
           format: date-time
           nullable: true
@@ -701,6 +714,29 @@ components:
         - captcha_token
       properties:
         captcha_token: { type: string }
+
+    CasinoCaptchaResponse:
+      type: object
+      required:
+        - id
+        - expires_at
+      properties:
+        id: { type: string, format: uuid }
+        expires_at: { type: string, format: date-time }
+
+    CasinoSpinResponse:
+      type: object
+      required:
+        - win
+      properties:
+        win: { type: boolean }
+        captcha_token:
+          type: string
+          description: Present only if win is true
+        cooldown_until:
+          type: string
+          format: date-time
+          description: Present only if win is false (10 min cooldown)
 
   responses:
     BadRequest:
@@ -1336,7 +1372,7 @@ paths:
                   description: Optional comment visible only to sender and receiver (costs coins on accept)
                 captcha_token:
                   type: string
-                  description: Required if the current user has requires_sudoku=true
+                  description: Required if the current user has captcha_type set to sudoku or casino
               additionalProperties: false
       responses:
         '201':
@@ -2369,10 +2405,10 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /admin/users/{userId}/requires-sudoku:
+  /admin/users/{userId}/captcha-type:
     put:
-      summary: Set whether a user requires sudoku captcha to hug
-      operationId: adminUpdateRequiresSudoku
+      summary: Set which captcha type a user requires to hug
+      operationId: adminUpdateCaptchaType
       security:
         - BearerAuth: ["admin"]
       parameters:
@@ -2389,10 +2425,10 @@ paths:
             schema:
               type: object
               required:
-                - requires_sudoku
+                - captcha_type
               properties:
-                requires_sudoku:
-                  type: boolean
+                captcha_type:
+                  $ref: '#/components/schemas/CaptchaType'
               additionalProperties: false
       responses:
         '200':
@@ -2518,3 +2554,52 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /captcha/casino:
+    get:
+      summary: Get a new Casino captcha session
+      operationId: getCasinoCaptcha
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '200':
+          description: A new Casino session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasinoCaptchaResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /captcha/casino/{id}/spin:
+    post:
+      summary: Spin the wheel!
+      operationId: spinCasino
+      security:
+        - BearerAuth: ["user", "admin"]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Spin result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasinoSpinResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'

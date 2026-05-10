@@ -33,6 +33,13 @@ const (
 	AdminUserRoleUser  AdminUserRole = "user"
 )
 
+// Defines values for CaptchaType.
+const (
+	Casino CaptchaType = "casino"
+	None   CaptchaType = "none"
+	Sudoku CaptchaType = "sudoku"
+)
+
 // Defines values for ErrorCode.
 const (
 	ALREADYHASPENDINGHUG  ErrorCode = "ALREADY_HAS_PENDING_HUG"
@@ -110,19 +117,19 @@ type AdminStats struct {
 
 // AdminUser defines model for AdminUser.
 type AdminUser struct {
-	Balance             int                `json:"balance"`
-	BannedAt            *time.Time         `json:"banned_at"`
-	CreatedAt           *time.Time         `json:"created_at"`
-	DisplayName         *string            `json:"display_name"`
-	Gender              *Gender            `json:"gender,omitempty"`
-	Id                  openapi_types.UUID `json:"id"`
-	LastVisitAt         *time.Time         `json:"last_visit_at"`
-	RequiresSudoku      *bool              `json:"requires_sudoku,omitempty"`
-	Role                AdminUserRole      `json:"role"`
-	SpecialTag          *string            `json:"special_tag"`
-	SudokuCooldownUntil *time.Time         `json:"sudoku_cooldown_until"`
-	Tag                 *string            `json:"tag"`
-	Username            string             `json:"username"`
+	Balance              int                `json:"balance"`
+	BannedAt             *time.Time         `json:"banned_at"`
+	CaptchaCooldownUntil *time.Time         `json:"captcha_cooldown_until"`
+	CaptchaType          CaptchaType        `json:"captcha_type"`
+	CreatedAt            *time.Time         `json:"created_at"`
+	DisplayName          *string            `json:"display_name"`
+	Gender               *Gender            `json:"gender,omitempty"`
+	Id                   openapi_types.UUID `json:"id"`
+	LastVisitAt          *time.Time         `json:"last_visit_at"`
+	Role                 AdminUserRole      `json:"role"`
+	SpecialTag           *string            `json:"special_tag"`
+	Tag                  *string            `json:"tag"`
+	Username             string             `json:"username"`
 }
 
 // AdminUserRole defines model for AdminUser.Role.
@@ -162,6 +169,25 @@ type BlockedUser struct {
 type BuySlotResponse struct {
 	NewBalance int         `json:"new_balance"`
 	Slots      HugSlotInfo `json:"slots"`
+}
+
+// CaptchaType defines model for CaptchaType.
+type CaptchaType string
+
+// CasinoCaptchaResponse defines model for CasinoCaptchaResponse.
+type CasinoCaptchaResponse struct {
+	ExpiresAt time.Time          `json:"expires_at"`
+	Id        openapi_types.UUID `json:"id"`
+}
+
+// CasinoSpinResponse defines model for CasinoSpinResponse.
+type CasinoSpinResponse struct {
+	// CaptchaToken Present only if win is true
+	CaptchaToken *string `json:"captcha_token,omitempty"`
+
+	// CooldownUntil Present only if win is false (10 min cooldown)
+	CooldownUntil *time.Time `json:"cooldown_until,omitempty"`
+	Win           bool       `json:"win"`
 }
 
 // ConnectionItem defines model for ConnectionItem.
@@ -423,16 +449,16 @@ type TopStreakEntry struct {
 
 // User defines model for User.
 type User struct {
-	DisplayName         *string            `json:"display_name"`
-	Gender              *Gender            `json:"gender,omitempty"`
-	Id                  openapi_types.UUID `json:"id"`
-	RequiresSudoku      *bool              `json:"requires_sudoku,omitempty"`
-	Role                UserRole           `json:"role"`
-	SpecialTag          *string            `json:"special_tag"`
-	SudokuCooldownUntil *time.Time         `json:"sudoku_cooldown_until"`
-	Tag                 *string            `json:"tag"`
-	TelegramId          *int64             `json:"telegram_id"`
-	Username            string             `json:"username"`
+	CaptchaCooldownUntil *time.Time         `json:"captcha_cooldown_until"`
+	CaptchaType          CaptchaType        `json:"captcha_type"`
+	DisplayName          *string            `json:"display_name"`
+	Gender               *Gender            `json:"gender,omitempty"`
+	Id                   openapi_types.UUID `json:"id"`
+	Role                 UserRole           `json:"role"`
+	SpecialTag           *string            `json:"special_tag"`
+	Tag                  *string            `json:"tag"`
+	TelegramId           *int64             `json:"telegram_id"`
+	Username             string             `json:"username"`
 }
 
 // UserRole defines model for User.Role.
@@ -451,25 +477,25 @@ type UserListItem struct {
 
 // UserProfile defines model for UserProfile.
 type UserProfile struct {
-	Balance             *int               `json:"balance,omitempty"`
-	DisplayName         *string            `json:"display_name"`
-	Gender              *Gender            `json:"gender,omitempty"`
-	HugsGiven           int                `json:"hugs_given"`
-	HugsReceived        int                `json:"hugs_received"`
-	Id                  openapi_types.UUID `json:"id"`
-	Intimacy            *IntimacyInfo      `json:"intimacy,omitempty"`
-	IsBlocked           *bool              `json:"is_blocked,omitempty"`
-	MutualGiven         *int               `json:"mutual_given,omitempty"`
-	MutualReceived      *int               `json:"mutual_received,omitempty"`
-	MutualTotal         *int               `json:"mutual_total,omitempty"`
-	Rank                string             `json:"rank"`
-	RequiresSudoku      *bool              `json:"requires_sudoku,omitempty"`
-	Role                string             `json:"role"`
-	SpecialTag          *string            `json:"special_tag"`
-	SudokuCooldownUntil *time.Time         `json:"sudoku_cooldown_until"`
-	Tag                 *string            `json:"tag"`
-	TotalHugs           int                `json:"total_hugs"`
-	Username            string             `json:"username"`
+	Balance              *int               `json:"balance,omitempty"`
+	CaptchaCooldownUntil *time.Time         `json:"captcha_cooldown_until"`
+	CaptchaType          CaptchaType        `json:"captcha_type"`
+	DisplayName          *string            `json:"display_name"`
+	Gender               *Gender            `json:"gender,omitempty"`
+	HugsGiven            int                `json:"hugs_given"`
+	HugsReceived         int                `json:"hugs_received"`
+	Id                   openapi_types.UUID `json:"id"`
+	Intimacy             *IntimacyInfo      `json:"intimacy,omitempty"`
+	IsBlocked            *bool              `json:"is_blocked,omitempty"`
+	MutualGiven          *int               `json:"mutual_given,omitempty"`
+	MutualReceived       *int               `json:"mutual_received,omitempty"`
+	MutualTotal          *int               `json:"mutual_total,omitempty"`
+	Rank                 string             `json:"rank"`
+	Role                 string             `json:"role"`
+	SpecialTag           *string            `json:"special_tag"`
+	Tag                  *string            `json:"tag"`
+	TotalHugs            int                `json:"total_hugs"`
+	Username             string             `json:"username"`
 }
 
 // BadRequest defines model for BadRequest.
@@ -511,6 +537,11 @@ type AdminUpdateBalanceJSONBody struct {
 	Amount int `json:"amount"`
 }
 
+// AdminUpdateCaptchaTypeJSONBody defines parameters for AdminUpdateCaptchaType.
+type AdminUpdateCaptchaTypeJSONBody struct {
+	CaptchaType CaptchaType `json:"captcha_type"`
+}
+
 // AdminUpdateDisplayNameJSONBody defines parameters for AdminUpdateDisplayName.
 type AdminUpdateDisplayNameJSONBody struct {
 	DisplayName *string `json:"display_name"`
@@ -524,11 +555,6 @@ type AdminUpdateGenderJSONBody struct {
 // AdminUpdatePasswordJSONBody defines parameters for AdminUpdatePassword.
 type AdminUpdatePasswordJSONBody struct {
 	Password string `json:"password"`
-}
-
-// AdminUpdateRequiresSudokuJSONBody defines parameters for AdminUpdateRequiresSudoku.
-type AdminUpdateRequiresSudokuJSONBody struct {
-	RequiresSudoku bool `json:"requires_sudoku"`
 }
 
 // AdminUpdateSpecialTagJSONBody defines parameters for AdminUpdateSpecialTag.
@@ -586,7 +612,7 @@ type GetHugsFeedParams struct {
 
 // SuggestHugJSONBody defines parameters for SuggestHug.
 type SuggestHugJSONBody struct {
-	// CaptchaToken Required if the current user has requires_sudoku=true
+	// CaptchaToken Required if the current user has captcha_type set to sudoku or casino
 	CaptchaToken *string `json:"captcha_token,omitempty"`
 
 	// Comment Optional comment visible only to sender and receiver (costs coins on accept)
@@ -639,6 +665,9 @@ type CreateAnnouncementJSONRequestBody CreateAnnouncementJSONBody
 // AdminUpdateBalanceJSONRequestBody defines body for AdminUpdateBalance for application/json ContentType.
 type AdminUpdateBalanceJSONRequestBody AdminUpdateBalanceJSONBody
 
+// AdminUpdateCaptchaTypeJSONRequestBody defines body for AdminUpdateCaptchaType for application/json ContentType.
+type AdminUpdateCaptchaTypeJSONRequestBody AdminUpdateCaptchaTypeJSONBody
+
 // AdminUpdateDisplayNameJSONRequestBody defines body for AdminUpdateDisplayName for application/json ContentType.
 type AdminUpdateDisplayNameJSONRequestBody AdminUpdateDisplayNameJSONBody
 
@@ -647,9 +676,6 @@ type AdminUpdateGenderJSONRequestBody AdminUpdateGenderJSONBody
 
 // AdminUpdatePasswordJSONRequestBody defines body for AdminUpdatePassword for application/json ContentType.
 type AdminUpdatePasswordJSONRequestBody AdminUpdatePasswordJSONBody
-
-// AdminUpdateRequiresSudokuJSONRequestBody defines body for AdminUpdateRequiresSudoku for application/json ContentType.
-type AdminUpdateRequiresSudokuJSONRequestBody AdminUpdateRequiresSudokuJSONBody
 
 // AdminUpdateSpecialTagJSONRequestBody defines body for AdminUpdateSpecialTag for application/json ContentType.
 type AdminUpdateSpecialTagJSONRequestBody AdminUpdateSpecialTagJSONBody
@@ -710,6 +736,9 @@ type ServerInterface interface {
 	// Ban a user
 	// (PUT /admin/users/{userId}/ban)
 	BanUser(ctx echo.Context, userId openapi_types.UUID) error
+	// Set which captcha type a user requires to hug
+	// (PUT /admin/users/{userId}/captcha-type)
+	AdminUpdateCaptchaType(ctx echo.Context, userId openapi_types.UUID) error
 	// Change a user's display name
 	// (PUT /admin/users/{userId}/display-name)
 	AdminUpdateDisplayName(ctx echo.Context, userId openapi_types.UUID) error
@@ -719,9 +748,6 @@ type ServerInterface interface {
 	// Change a user's password
 	// (PUT /admin/users/{userId}/password)
 	AdminUpdatePassword(ctx echo.Context, userId openapi_types.UUID) error
-	// Set whether a user requires sudoku captcha to hug
-	// (PUT /admin/users/{userId}/requires-sudoku)
-	AdminUpdateRequiresSudoku(ctx echo.Context, userId openapi_types.UUID) error
 	// Change a user's special tag (admin-only styled tag)
 	// (PUT /admin/users/{userId}/special-tag)
 	AdminUpdateSpecialTag(ctx echo.Context, userId openapi_types.UUID) error
@@ -761,6 +787,12 @@ type ServerInterface interface {
 	// Get current user balance
 	// (GET /balance)
 	GetBalance(ctx echo.Context) error
+	// Get a new Casino captcha session
+	// (GET /captcha/casino)
+	GetCasinoCaptcha(ctx echo.Context) error
+	// Spin the wheel!
+	// (POST /captcha/casino/{id}/spin)
+	SpinCasino(ctx echo.Context, id openapi_types.UUID) error
 	// Get a new Sudoku captcha puzzle
 	// (GET /captcha/sudoku)
 	GetSudokuCaptcha(ctx echo.Context) error
@@ -1030,6 +1062,24 @@ func (w *ServerInterfaceWrapper) BanUser(ctx echo.Context) error {
 	return err
 }
 
+// AdminUpdateCaptchaType converts echo context to params.
+func (w *ServerInterfaceWrapper) AdminUpdateCaptchaType(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{"admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AdminUpdateCaptchaType(ctx, userId)
+	return err
+}
+
 // AdminUpdateDisplayName converts echo context to params.
 func (w *ServerInterfaceWrapper) AdminUpdateDisplayName(ctx echo.Context) error {
 	var err error
@@ -1081,24 +1131,6 @@ func (w *ServerInterfaceWrapper) AdminUpdatePassword(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.AdminUpdatePassword(ctx, userId)
-	return err
-}
-
-// AdminUpdateRequiresSudoku converts echo context to params.
-func (w *ServerInterfaceWrapper) AdminUpdateRequiresSudoku(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "userId" -------------
-	var userId openapi_types.UUID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{"admin"})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.AdminUpdateRequiresSudoku(ctx, userId)
 	return err
 }
 
@@ -1281,6 +1313,35 @@ func (w *ServerInterfaceWrapper) GetBalance(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetBalance(ctx)
+	return err
+}
+
+// GetCasinoCaptcha converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCasinoCaptcha(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{"user", "admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCasinoCaptcha(ctx)
+	return err
+}
+
+// SpinCasino converts echo context to params.
+func (w *ServerInterfaceWrapper) SpinCasino(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", ctx.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{"user", "admin"})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SpinCasino(ctx, id)
 	return err
 }
 
@@ -1889,10 +1950,10 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/admin/users/:userId/balance", wrapper.AdminUpdateBalance)
 	router.DELETE(baseURL+"/admin/users/:userId/ban", wrapper.UnbanUser)
 	router.PUT(baseURL+"/admin/users/:userId/ban", wrapper.BanUser)
+	router.PUT(baseURL+"/admin/users/:userId/captcha-type", wrapper.AdminUpdateCaptchaType)
 	router.PUT(baseURL+"/admin/users/:userId/display-name", wrapper.AdminUpdateDisplayName)
 	router.PUT(baseURL+"/admin/users/:userId/gender", wrapper.AdminUpdateGender)
 	router.PUT(baseURL+"/admin/users/:userId/password", wrapper.AdminUpdatePassword)
-	router.PUT(baseURL+"/admin/users/:userId/requires-sudoku", wrapper.AdminUpdateRequiresSudoku)
 	router.PUT(baseURL+"/admin/users/:userId/special-tag", wrapper.AdminUpdateSpecialTag)
 	router.PUT(baseURL+"/admin/users/:userId/tag", wrapper.AdminUpdateTag)
 	router.PUT(baseURL+"/admin/users/:userId/username", wrapper.AdminUpdateUsername)
@@ -1906,6 +1967,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/auth/telegram/init", wrapper.InitTelegramLogin)
 	router.POST(baseURL+"/auth/telegram/poll", wrapper.PollTelegramLogin)
 	router.GET(baseURL+"/balance", wrapper.GetBalance)
+	router.GET(baseURL+"/captcha/casino", wrapper.GetCasinoCaptcha)
+	router.POST(baseURL+"/captcha/casino/:id/spin", wrapper.SpinCasino)
 	router.GET(baseURL+"/captcha/sudoku", wrapper.GetSudokuCaptcha)
 	router.POST(baseURL+"/captcha/sudoku/:id/complete", wrapper.CompleteSudoku)
 	router.POST(baseURL+"/captcha/sudoku/:id/verify-cell", wrapper.VerifySudokuCell)
@@ -2332,6 +2395,60 @@ func (response BanUser404JSONResponse) VisitBanUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
+type AdminUpdateCaptchaTypeRequestObject struct {
+	UserId openapi_types.UUID `json:"userId"`
+	Body   *AdminUpdateCaptchaTypeJSONRequestBody
+}
+
+type AdminUpdateCaptchaTypeResponseObject interface {
+	VisitAdminUpdateCaptchaTypeResponse(w http.ResponseWriter) error
+}
+
+type AdminUpdateCaptchaType200JSONResponse AdminUser
+
+func (response AdminUpdateCaptchaType200JSONResponse) VisitAdminUpdateCaptchaTypeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateCaptchaType400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminUpdateCaptchaType400JSONResponse) VisitAdminUpdateCaptchaTypeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateCaptchaType401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminUpdateCaptchaType401JSONResponse) VisitAdminUpdateCaptchaTypeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateCaptchaType403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AdminUpdateCaptchaType403JSONResponse) VisitAdminUpdateCaptchaTypeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateCaptchaType404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminUpdateCaptchaType404JSONResponse) VisitAdminUpdateCaptchaTypeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type AdminUpdateDisplayNameRequestObject struct {
 	UserId openapi_types.UUID `json:"userId"`
 	Body   *AdminUpdateDisplayNameJSONRequestBody
@@ -2465,60 +2582,6 @@ type AdminUpdatePassword403JSONResponse struct{ ForbiddenJSONResponse }
 func (response AdminUpdatePassword403JSONResponse) VisitAdminUpdatePasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateRequiresSudokuRequestObject struct {
-	UserId openapi_types.UUID `json:"userId"`
-	Body   *AdminUpdateRequiresSudokuJSONRequestBody
-}
-
-type AdminUpdateRequiresSudokuResponseObject interface {
-	VisitAdminUpdateRequiresSudokuResponse(w http.ResponseWriter) error
-}
-
-type AdminUpdateRequiresSudoku200JSONResponse AdminUser
-
-func (response AdminUpdateRequiresSudoku200JSONResponse) VisitAdminUpdateRequiresSudokuResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateRequiresSudoku400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response AdminUpdateRequiresSudoku400JSONResponse) VisitAdminUpdateRequiresSudokuResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateRequiresSudoku401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response AdminUpdateRequiresSudoku401JSONResponse) VisitAdminUpdateRequiresSudokuResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateRequiresSudoku403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response AdminUpdateRequiresSudoku403JSONResponse) VisitAdminUpdateRequiresSudokuResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateRequiresSudoku404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response AdminUpdateRequiresSudoku404JSONResponse) VisitAdminUpdateRequiresSudokuResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -3046,6 +3109,102 @@ type GetBalance401JSONResponse struct{ UnauthorizedJSONResponse }
 func (response GetBalance401JSONResponse) VisitGetBalanceResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCasinoCaptchaRequestObject struct {
+}
+
+type GetCasinoCaptchaResponseObject interface {
+	VisitGetCasinoCaptchaResponse(w http.ResponseWriter) error
+}
+
+type GetCasinoCaptcha200JSONResponse CasinoCaptchaResponse
+
+func (response GetCasinoCaptcha200JSONResponse) VisitGetCasinoCaptchaResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCasinoCaptcha401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetCasinoCaptcha401JSONResponse) VisitGetCasinoCaptchaResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCasinoCaptcha403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetCasinoCaptcha403JSONResponse) VisitGetCasinoCaptchaResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SpinCasinoRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type SpinCasinoResponseObject interface {
+	VisitSpinCasinoResponse(w http.ResponseWriter) error
+}
+
+type SpinCasino200JSONResponse CasinoSpinResponse
+
+func (response SpinCasino200JSONResponse) VisitSpinCasinoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SpinCasino400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SpinCasino400JSONResponse) VisitSpinCasinoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SpinCasino401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SpinCasino401JSONResponse) VisitSpinCasinoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SpinCasino403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SpinCasino403JSONResponse) VisitSpinCasinoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SpinCasino404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SpinCasino404JSONResponse) VisitSpinCasinoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SpinCasino410JSONResponse struct{ GoneJSONResponse }
+
+func (response SpinCasino410JSONResponse) VisitSpinCasinoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(410)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -4280,6 +4439,9 @@ type StrictServerInterface interface {
 	// Ban a user
 	// (PUT /admin/users/{userId}/ban)
 	BanUser(ctx context.Context, request BanUserRequestObject) (BanUserResponseObject, error)
+	// Set which captcha type a user requires to hug
+	// (PUT /admin/users/{userId}/captcha-type)
+	AdminUpdateCaptchaType(ctx context.Context, request AdminUpdateCaptchaTypeRequestObject) (AdminUpdateCaptchaTypeResponseObject, error)
 	// Change a user's display name
 	// (PUT /admin/users/{userId}/display-name)
 	AdminUpdateDisplayName(ctx context.Context, request AdminUpdateDisplayNameRequestObject) (AdminUpdateDisplayNameResponseObject, error)
@@ -4289,9 +4451,6 @@ type StrictServerInterface interface {
 	// Change a user's password
 	// (PUT /admin/users/{userId}/password)
 	AdminUpdatePassword(ctx context.Context, request AdminUpdatePasswordRequestObject) (AdminUpdatePasswordResponseObject, error)
-	// Set whether a user requires sudoku captcha to hug
-	// (PUT /admin/users/{userId}/requires-sudoku)
-	AdminUpdateRequiresSudoku(ctx context.Context, request AdminUpdateRequiresSudokuRequestObject) (AdminUpdateRequiresSudokuResponseObject, error)
 	// Change a user's special tag (admin-only styled tag)
 	// (PUT /admin/users/{userId}/special-tag)
 	AdminUpdateSpecialTag(ctx context.Context, request AdminUpdateSpecialTagRequestObject) (AdminUpdateSpecialTagResponseObject, error)
@@ -4331,6 +4490,12 @@ type StrictServerInterface interface {
 	// Get current user balance
 	// (GET /balance)
 	GetBalance(ctx context.Context, request GetBalanceRequestObject) (GetBalanceResponseObject, error)
+	// Get a new Casino captcha session
+	// (GET /captcha/casino)
+	GetCasinoCaptcha(ctx context.Context, request GetCasinoCaptchaRequestObject) (GetCasinoCaptchaResponseObject, error)
+	// Spin the wheel!
+	// (POST /captcha/casino/{id}/spin)
+	SpinCasino(ctx context.Context, request SpinCasinoRequestObject) (SpinCasinoResponseObject, error)
 	// Get a new Sudoku captcha puzzle
 	// (GET /captcha/sudoku)
 	GetSudokuCaptcha(ctx context.Context, request GetSudokuCaptchaRequestObject) (GetSudokuCaptchaResponseObject, error)
@@ -4681,6 +4846,37 @@ func (sh *strictHandler) BanUser(ctx echo.Context, userId openapi_types.UUID) er
 	return nil
 }
 
+// AdminUpdateCaptchaType operation middleware
+func (sh *strictHandler) AdminUpdateCaptchaType(ctx echo.Context, userId openapi_types.UUID) error {
+	var request AdminUpdateCaptchaTypeRequestObject
+
+	request.UserId = userId
+
+	var body AdminUpdateCaptchaTypeJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminUpdateCaptchaType(ctx.Request().Context(), request.(AdminUpdateCaptchaTypeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminUpdateCaptchaType")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(AdminUpdateCaptchaTypeResponseObject); ok {
+		return validResponse.VisitAdminUpdateCaptchaTypeResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // AdminUpdateDisplayName operation middleware
 func (sh *strictHandler) AdminUpdateDisplayName(ctx echo.Context, userId openapi_types.UUID) error {
 	var request AdminUpdateDisplayNameRequestObject
@@ -4768,37 +4964,6 @@ func (sh *strictHandler) AdminUpdatePassword(ctx echo.Context, userId openapi_ty
 		return err
 	} else if validResponse, ok := response.(AdminUpdatePasswordResponseObject); ok {
 		return validResponse.VisitAdminUpdatePasswordResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// AdminUpdateRequiresSudoku operation middleware
-func (sh *strictHandler) AdminUpdateRequiresSudoku(ctx echo.Context, userId openapi_types.UUID) error {
-	var request AdminUpdateRequiresSudokuRequestObject
-
-	request.UserId = userId
-
-	var body AdminUpdateRequiresSudokuJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.AdminUpdateRequiresSudoku(ctx.Request().Context(), request.(AdminUpdateRequiresSudokuRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AdminUpdateRequiresSudoku")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(AdminUpdateRequiresSudokuResponseObject); ok {
-		return validResponse.VisitAdminUpdateRequiresSudokuResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -5146,6 +5311,54 @@ func (sh *strictHandler) GetBalance(ctx echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(GetBalanceResponseObject); ok {
 		return validResponse.VisitGetBalanceResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetCasinoCaptcha operation middleware
+func (sh *strictHandler) GetCasinoCaptcha(ctx echo.Context) error {
+	var request GetCasinoCaptchaRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCasinoCaptcha(ctx.Request().Context(), request.(GetCasinoCaptchaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCasinoCaptcha")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetCasinoCaptchaResponseObject); ok {
+		return validResponse.VisitGetCasinoCaptchaResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// SpinCasino operation middleware
+func (sh *strictHandler) SpinCasino(ctx echo.Context, id openapi_types.UUID) error {
+	var request SpinCasinoRequestObject
+
+	request.Id = id
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SpinCasino(ctx.Request().Context(), request.(SpinCasinoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SpinCasino")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(SpinCasinoResponseObject); ok {
+		return validResponse.VisitSpinCasinoResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -6022,108 +6235,111 @@ func (sh *strictHandler) GetUserProfile(ctx echo.Context, userId openapi_types.U
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

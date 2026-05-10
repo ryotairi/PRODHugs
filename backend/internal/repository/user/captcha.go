@@ -23,12 +23,12 @@ func (r *repo) CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle
 	})
 }
 
-func (r *repo) SetSudokuCooldown(ctx context.Context, userID uuid.UUID, cooldownUntil time.Time) error {
+func (r *repo) SetCaptchaCooldown(ctx context.Context, userID uuid.UUID, cooldownUntil time.Time) error {
 	q := repository.Queries(ctx, r.q)
 	cd := pgtype.Timestamptz{Time: cooldownUntil, Valid: true}
-	return q.SetSudokuCooldown(ctx, storage.SetSudokuCooldownParams{
-		ID:                  userID,
-		SudokuCooldownUntil: cd,
+	return q.SetCaptchaCooldown(ctx, storage.SetCaptchaCooldownParams{
+		ID:                   userID,
+		CaptchaCooldownUntil: cd,
 	})
 }
 
@@ -50,4 +50,28 @@ func (r *repo) MarkSudokuPassed(ctx context.Context, id uuid.UUID) (storage.Sudo
 func (r *repo) DeleteSudokuCaptcha(ctx context.Context, id uuid.UUID) error {
 	q := repository.Queries(ctx, r.q)
 	return q.DeleteSudokuCaptcha(ctx, id)
+}
+
+func (r *repo) CreateCasinoCaptcha(ctx context.Context, userID uuid.UUID, expiresAt time.Time) (storage.CasinoCaptcha, error) {
+	q := repository.Queries(ctx, r.q)
+	exp := pgtype.Timestamptz{Time: expiresAt, Valid: true}
+	return q.CreateCasinoCaptcha(ctx, storage.CreateCasinoCaptchaParams{
+		UserID:    userID,
+		ExpiresAt: exp,
+	})
+}
+
+func (r *repo) GetCasinoCaptcha(ctx context.Context, id uuid.UUID) (storage.CasinoCaptcha, error) {
+	q := repository.Queries(ctx, r.q)
+	return q.GetCasinoCaptcha(ctx, id)
+}
+
+func (r *repo) MarkCasinoPassed(ctx context.Context, id uuid.UUID) (storage.CasinoCaptcha, error) {
+	q := repository.Queries(ctx, r.q)
+	return q.MarkCasinoPassed(ctx, id)
+}
+
+func (r *repo) DeleteCasinoCaptcha(ctx context.Context, id uuid.UUID) error {
+	q := repository.Queries(ctx, r.q)
+	return q.DeleteCasinoCaptcha(ctx, id)
 }

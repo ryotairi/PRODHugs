@@ -356,13 +356,28 @@ const newSpecialTag = ref('')
 const savingSpecialTag = ref(false)
 const specialTagError = ref('')
 
-async function toggleRequiresSudoku(user: AdminUser) {
+// Captcha type dialog
+const captchaTypeDialogOpen = ref(false)
+const newCaptchaType = ref<AdminUser['captcha_type']>('none')
+const savingCaptchaType = ref(false)
+
+function openCaptchaTypeDialog(user: AdminUser) {
+  editingUser.value = user
+  newCaptchaType.value = user.captcha_type
+  captchaTypeDialogOpen.value = true
+}
+
+async function saveCaptchaType() {
+  if (!editingUser.value) return
+  savingCaptchaType.value = true
   try {
-    await admin.updateRequiresSudoku(user.id, !user.requires_sudoku)
-    toast.success(`Судоку капча ${user.requires_sudoku ? 'включена' : 'отключена'} для ${user.username}`)
-  } catch (e) {
-    const parsed = parseBackendError(e)
-    toast.error(parsed.generalError ?? 'Ошибка сохранения')
+    await admin.updateCaptchaType(editingUser.value.id, newCaptchaType.value)
+    toast.success('Тип капчи изменён')
+    captchaTypeDialogOpen.value = false
+  } catch {
+    toast.error('Ошибка сохранения')
+  } finally {
+    savingCaptchaType.value = false
   }
 }
 
@@ -662,9 +677,9 @@ function formatDate(dateStr: string): string {
                 <Tag class="size-4" />
                 Спецтег
               </DropdownMenuItem>
-              <DropdownMenuItem @click="toggleRequiresSudoku(user)">
+              <DropdownMenuItem @click="openCaptchaTypeDialog(user)">
                 <Puzzle class="size-4" />
-                {{ user.requires_sudoku ? 'Отключить Судоку' : 'Включить Судоку' }}
+                Капча: {{ user.captcha_type === 'none' ? 'Нет' : user.captcha_type === 'sudoku' ? 'Судоку' : 'Казино' }}
               </DropdownMenuItem>
               <DropdownMenuItem @click="openGenderDialog(user)">
                 <Venus class="size-4" />
@@ -941,6 +956,40 @@ function formatDate(dateStr: string): string {
             @click="savePassword"
           >
             {{ savingPassword ? 'Сохранение...' : 'Сменить пароль' }}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Captcha type dialog -->
+    <Dialog v-model:open="captchaTypeDialogOpen">
+      <DialogContent class="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Тип капчи</DialogTitle>
+          <DialogDescription> Пользователь: {{ editingUser?.username }} </DialogDescription>
+        </DialogHeader>
+        <div class="space-y-4">
+          <RadioGroup v-model="newCaptchaType" class="grid gap-2">
+            <div class="flex items-center gap-2">
+              <RadioGroupItem id="captcha-none" value="none" />
+              <Label for="captcha-none" class="cursor-pointer font-normal">Без капчи</Label>
+            </div>
+            <div class="flex items-center gap-2">
+              <RadioGroupItem id="captcha-sudoku" value="sudoku" />
+              <Label for="captcha-sudoku" class="cursor-pointer font-normal">Судоку</Label>
+            </div>
+            <div class="flex items-center gap-2">
+              <RadioGroupItem id="captcha-casino" value="casino" />
+              <Label for="captcha-casino" class="cursor-pointer font-normal">Казино (1к4)</Label>
+            </div>
+          </RadioGroup>
+          <Button
+            variant="yellow"
+            class="w-full rounded-[21px]"
+            :disabled="savingCaptchaType"
+            @click="saveCaptchaType"
+          >
+            {{ savingCaptchaType ? 'Сохранение...' : 'Сохранить' }}
           </Button>
         </div>
       </DialogContent>

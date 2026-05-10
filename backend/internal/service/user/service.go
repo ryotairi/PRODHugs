@@ -4,6 +4,7 @@ import (
 	"context"
 	"go-service-template/internal/models"
 	"go-service-template/internal/db/sqlc/storage"
+	"math/rand/v2"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,14 +34,18 @@ type repo interface {
 	AdminUpdateDisplayName(ctx context.Context, id uuid.UUID, displayName *string) (*models.User, error)
 	SearchUsersAdmin(ctx context.Context, query string, limit, offset int32) ([]*models.AdminUser, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
-	AdminUpdateRequiresSudoku(ctx context.Context, id uuid.UUID, requiresSudoku bool) (*models.User, error)
+	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
 	
 	CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt time.Time) (storage.SudokuCaptcha, error)
 	GetSudokuCaptcha(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
 	IncrementSudokuErrors(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
 	MarkSudokuPassed(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
 	DeleteSudokuCaptcha(ctx context.Context, id uuid.UUID) error
-	SetSudokuCooldown(ctx context.Context, userID uuid.UUID, cooldownUntil time.Time) error
+	CreateCasinoCaptcha(ctx context.Context, userID uuid.UUID, expiresAt time.Time) (storage.CasinoCaptcha, error)
+	GetCasinoCaptcha(ctx context.Context, id uuid.UUID) (storage.CasinoCaptcha, error)
+	MarkCasinoPassed(ctx context.Context, id uuid.UUID) (storage.CasinoCaptcha, error)
+	DeleteCasinoCaptcha(ctx context.Context, id uuid.UUID) error
+	SetCaptchaCooldown(ctx context.Context, userID uuid.UUID, cooldownUntil time.Time) error
 }
 
 type balanceRepo interface {
@@ -91,6 +96,7 @@ type service struct {
 	announcementRepo  announcementRepo
 	botUsername        string
 	tx                transactor
+	rng               *rand.Rand
 
 	onAnnouncementCreated AnnouncementCallback
 	onAnnouncementRemoved AnnouncementRemovedCallback
@@ -100,6 +106,7 @@ func New(repo repo, jwtManager jwtManager, opts ...func(*service)) *service {
 	s := &service{
 		repo:       repo,
 		jwtManager: jwtManager,
+		rng:        rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)),
 	}
 	for _, opt := range opts {
 		opt(s)

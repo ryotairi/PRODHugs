@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import SudokuModal from '@/components/SudokuModal.vue'
+import CasinoModal from '@/components/CasinoModal.vue'
 
 const props = defineProps<{
   userId: string
@@ -39,7 +40,7 @@ const hugsStore = useHugsStore()
 const loading = ref(false)
 const cooldown = ref<CooldownInfo | null>(null)
 const remaining = ref(0)
-const sudokuRemaining = ref(0)
+const captchaRemaining = ref(0)
 const btnRef = ref<HTMLButtonElement | null>(null)
 const intimacy = ref<IntimacyInfo | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
@@ -49,11 +50,12 @@ const showCommentDialog = ref(false)
 const commentText = ref('')
 const pendingHugType = ref<string | undefined>(undefined)
 
-// Sudoku state
+// Captcha state
 const showSudokuModal = ref(false)
+const showCasinoModal = ref(false)
 const cachedComment = ref<string | undefined>(undefined)
 
-const totalRemaining = computed(() => Math.max(remaining.value, sudokuRemaining.value))
+const totalRemaining = computed(() => Math.max(remaining.value, captchaRemaining.value))
 
 const availableHugTypes = computed<HugType[]>(() => {
   if (!intimacy.value) return ['standard']
@@ -100,7 +102,7 @@ async function loadCooldown() {
   try {
     cooldown.value = await hugsStore.getCooldown(props.userId)
     remaining.value = cooldown.value.remaining_seconds
-    updateSudokuRemaining()
+    updateCaptchaRemaining()
     startTimer()
   } catch {
     // Ignore
@@ -112,25 +114,25 @@ async function loadCooldown() {
   }
 }
 
-function updateSudokuRemaining() {
-  if (!auth.user?.sudoku_cooldown_until) {
-    sudokuRemaining.value = 0
+function updateCaptchaRemaining() {
+  if (!auth.user?.captcha_cooldown_until) {
+    captchaRemaining.value = 0
     return
   }
-  const end = new Date(auth.user.sudoku_cooldown_until).getTime()
+  const end = new Date(auth.user.captcha_cooldown_until).getTime()
   const now = Date.now()
-  sudokuRemaining.value = Math.max(0, Math.floor((end - now) / 1000))
+  captchaRemaining.value = Math.max(0, Math.floor((end - now) / 1000))
 }
 
 function startTimer() {
   if (timer) clearInterval(timer)
   timer = setInterval(() => {
     if (remaining.value > 0) remaining.value--
-    updateSudokuRemaining()
+    updateCaptchaRemaining()
     
-    if (remaining.value <= 0 && sudokuRemaining.value <= 0) {
+    if (remaining.value <= 0 && captchaRemaining.value <= 0) {
       remaining.value = 0
-      sudokuRemaining.value = 0
+      captchaRemaining.value = 0
       if (timer) clearInterval(timer)
     }
   }, 1000)
@@ -147,10 +149,14 @@ function openCommentDialog(hugType?: string) {
 async function suggest(hugType?: string, comment?: string, captchaToken?: string) {
   if (suggesting || isDisabled.value) return
   
-  if (auth.user?.requires_sudoku && !captchaToken) {
+  if (auth.user?.captcha_type !== 'none' && !captchaToken) {
     pendingHugType.value = hugType
     cachedComment.value = comment
-    showSudokuModal.value = true
+    if (auth.user?.captcha_type === 'sudoku') {
+      showSudokuModal.value = true
+    } else if (auth.user?.captcha_type === 'casino') {
+      showCasinoModal.value = true
+    }
     return
   }
   
@@ -166,7 +172,11 @@ async function suggest(hugType?: string, comment?: string, captchaToken?: string
     if (err.response?.data?.code === 'CAPTCHA_REQUIRED') {
       pendingHugType.value = hugType
       cachedComment.value = comment
-      showSudokuModal.value = true
+      if (auth.user?.captcha_type === 'sudoku') {
+        showSudokuModal.value = true
+      } else if (auth.user?.captcha_type === 'casino') {
+        showCasinoModal.value = true
+      }
       return
     }
     toast.error(err.response?.data?.message || `Не удалось предложить обнимашку ${props.username}`)
@@ -181,14 +191,14 @@ function sendWithComment() {
   suggest(pendingHugType.value, comment)
 }
 
-function handleSudokuSuccess(token: string) {
+function handleCaptchaSuccess(token: string) {
   suggest(pendingHugType.value, cachedComment.value, token)
 }
 
-async function handleSudokuFailed() {
+async function handleCaptchaFailed() {
   // Cooldown is set by backend, we should refresh auth user
   await auth.fetchMe()
-  updateSudokuRemaining()
+  updateCaptchaRemaining()
   startTimer()
 }
 
@@ -199,10 +209,10 @@ function formatTime(seconds: number): string {
 }
 
 watch(
-  () => auth.user?.sudoku_cooldown_until,
+  () => auth.user?.captcha_cooldown_until,
   () => {
-    updateSudokuRemaining()
-    if (sudokuRemaining.value > 0) {
+    updateCaptchaRemaining()
+    if (captchaRemaining.value > 0) {
       startTimer()
     }
   },
@@ -338,8 +348,14 @@ watch(
     <SudokuModal 
       v-model:open="showSudokuModal" 
       :target-id="props.userId"
-      @success="handleSudokuSuccess" 
-      @failed="handleSudokuFailed" 
+      @success="handleCaptchaSuccess" 
+      @failed="handleCaptchaFailed" 
+    />
+
+    <CasinoModal
+      v-model:open="showCasinoModal"
+      @success="handleCaptchaSuccess"
+      @failed="handleCaptchaFailed"
     />
   </div>
 </template>
