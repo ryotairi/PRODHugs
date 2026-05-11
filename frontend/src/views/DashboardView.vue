@@ -127,10 +127,10 @@ async function claimDaily() {
   claimingDaily.value = true
   try {
     dailyResult.value = await hugs.claimDailyReward()
-    if (dailyResult.value.already_claimed) {
+      if (dailyResult.value.already_claimed) {
       toast.info('Вы уже получили награду сегодня')
     } else {
-      toast.success(`Получено +${plural(dailyResult.value.amount, 'монета', 'монеты', 'монет')}!`)
+      toast.success(`Получено +${plural(dailyResult.value.amount, 'обниманя', 'обнимани', 'обнимань')}!`)
     }
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } }
@@ -200,7 +200,7 @@ const rankInfo = () => getRankProgress(profile.value?.total_hugs ?? 0)
             <RankBadge :rank="profile?.rank ?? 'Новичок'" />
             <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Coins class="size-3.5" />
-              {{ plural(hugs.balance?.amount ?? 0, 'монета', 'монеты', 'монет') }}
+              {{ plural(hugs.balance?.amount ?? 0, 'обниманя', 'обнимани', 'обнимань') }}
             </div>
           </div>
           <div v-if="rankInfo().nextRank" class="space-y-2">
@@ -233,7 +233,7 @@ const rankInfo = () => getRankProgress(profile.value?.total_hugs ?? 0)
               Уже получено сегодня. Серия: {{ dailyResult.streak_days }} дн.
             </p>
             <p v-else class="text-prod-yellow">
-              +{{ plural(dailyResult.amount, 'монета', 'монеты', 'монет') }}! Серия:
+              +{{ plural(dailyResult.amount, 'обниманя', 'обнимани', 'обнимань') }}! Серия:
               {{ dailyResult.streak_days }} дн.
             </p>
           </div>

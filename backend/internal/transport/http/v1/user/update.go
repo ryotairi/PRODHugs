@@ -50,7 +50,7 @@ func (h *UserHandler) UpdateUserSettings(ctx context.Context, req v1.UpdateUserS
 			return v1.UpdateUserSettings400JSONResponse{
 				BadRequestJSONResponse: v1.BadRequestJSONResponse{
 					Code:    v1.INSUFFICIENTBALANCE,
-					Message: "Недостаточно монет для смены тега (нужно 5)",
+					Message: "Недостаточно обнимань для смены тега (нужно 5)",
 				},
 			}, nil
 		}

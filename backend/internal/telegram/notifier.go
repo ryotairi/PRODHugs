@@ -92,8 +92,11 @@ func (n *Notifier) NotifyHugCompleted(ctx context.Context, giverID, receiverID u
 	}
 
 	receiverVerb := genderVerb(receiver.Gender, "принял", "приняла", "принял(а)")
-	giverMsg := fmt.Sprintf("🎉 <b>%s</b> %s %s! %s монет", displayName(receiver), receiverVerb, hugWord, giverCoinText)
-	receiverMsg := fmt.Sprintf("🎉 Вы обнялись с <b>%s</b>! %s монет", displayName(giver), coinText)
+	giverMsg := fmt.Sprintf("🎉 <b>%s</b> %s %s! %s %s", displayName(receiver), receiverVerb, hugWord, giverCoinText, pluralObnimani(int(totalCoins)))
+	if comment != nil {
+		giverMsg = fmt.Sprintf("🎉 <b>%s</b> %s %s! %s", displayName(receiver), receiverVerb, hugWord, giverCoinText)
+	}
+	receiverMsg := fmt.Sprintf("🎉 Вы обнялись с <b>%s</b>! %s %s", displayName(giver), coinText, pluralObnimani(int(totalCoins)))
 
 	// Append the comment to the receiver's notification
 	if comment != nil && *comment != "" {
@@ -102,6 +105,22 @@ func (n *Notifier) NotifyHugCompleted(ctx context.Context, giverID, receiverID u
 
 	n.sendToUser(ctx, giverID, giverMsg)
 	n.sendToUser(ctx, receiverID, receiverMsg)
+}
+
+func pluralObnimani(n int) string {
+	abs := n
+	if abs < 0 {
+		abs = -abs
+	}
+	mod10 := abs % 10
+	mod100 := abs % 100
+	if mod10 == 1 && mod100 != 11 {
+		return "обниманя"
+	}
+	if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) {
+		return "обнимани"
+	}
+	return "обнимань"
 }
 
 // NotifyHugDeclined notifies the giver that their hug was declined.

@@ -5,6 +5,7 @@ import { ShieldX, Send } from 'lucide-vue-next'
 import { useAuthStore, type Gender } from '@/stores/auth'
 import { useHugsStore, type BlockedUser } from '@/stores/hugs'
 import { authApi, usersApi } from '@/api/client'
+import { plural } from '@/lib/utils'
 import { validateChangePasswordForm, parseBackendError, type FieldError } from '@/lib/validation'
 import {
   Dialog,
@@ -270,7 +271,7 @@ async function savePassword() {
               placeholder="Мой тег"
             />
             <p class="text-[11px] text-muted-foreground">
-              Будет виден в рейтинге и на странице пользователей. Смена тега стоит 5 монет.
+              Будет виден в рейтинге и на странице пользователей. Смена тега стоит {{ plural(5, 'обниманя', 'обнимани', 'обнимань') }}.
             </p>
           </div>
           <Button

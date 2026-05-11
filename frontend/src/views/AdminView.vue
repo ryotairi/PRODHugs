@@ -626,7 +626,7 @@ function formatDate(dateStr: string): string {
                 </p>
                 <span class="text-xs text-muted-foreground">·</span>
                 <p class="text-xs text-muted-foreground tabular-nums">
-                  <Coins class="inline size-3 mr-0.5" />{{ user.balance }}
+                  <Coins class="inline size-3 mr-0.5" />{{ user.balance }} обнимань
                 </p>
                 <p v-if="user.banned_at" class="text-xs text-destructive/70">
                   с {{ formatDate(user.banned_at) }}
@@ -794,7 +794,7 @@ function formatDate(dateStr: string): string {
         </DialogHeader>
         <div class="space-y-4">
           <div class="grid gap-1.5">
-            <Label for="admin-balance">Количество монет</Label>
+            <Label for="admin-balance">Количество обнимань</Label>
             <Input
               id="admin-balance"
               v-model.number="newBalance"

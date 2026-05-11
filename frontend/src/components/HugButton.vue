@@ -4,7 +4,7 @@ import { Heart, Clock, Loader2, Hourglass, ChevronDown, MessageSquare } from 'lu
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useHugsStore, type CooldownInfo, type IntimacyInfo, type HugType } from '@/stores/hugs'
-import { suggestVerb, hugTypeLabel } from '@/lib/utils'
+import { suggestVerb, hugTypeLabel, plural } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -316,7 +316,7 @@ watch(
           <DialogTitle>Комментарий к обнимашке</DialogTitle>
           <DialogDescription>
             Виден только тебе и получателю. Стоимость:
-            {{ commentCost }} {{ commentCost === 1 ? 'монета' : 'монеты' }} (при принятии).
+            {{ plural(commentCost, 'обниманя', 'обнимани', 'обнимань') }} (при принятии).
           </DialogDescription>
         </DialogHeader>
         <div class="space-y-2">

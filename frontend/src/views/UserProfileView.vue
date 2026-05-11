@@ -117,7 +117,7 @@ async function upgrade() {
     cooldown.value = await hugsStore.upgradeCooldown(userId.value)
     toast.success('Кулдаун уменьшен!')
   } catch (e: any) {
-    toast.error(e.response?.data?.message || 'Недостаточно монет')
+    toast.error(e.response?.data?.message || 'Недостаточно обнимань')
   } finally {
     upgrading.value = false
   }
@@ -297,7 +297,7 @@ watch(userId, () => {
               Кулдаун -{{ profile.intimacy.cooldown_reduction_pct }}%
             </span>
             <span v-if="profile.intimacy.bonus_coins > 0">
-              +{{ profile.intimacy.bonus_coins }} бонусных монет за обнимашку
+              +{{ profile.intimacy.bonus_coins }} бонусных обнимань за обнимашку
             </span>
           </div>
         </CardContent>
@@ -393,7 +393,7 @@ watch(userId, () => {
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-xs text-muted-foreground sm:text-sm">
               <Coins class="inline size-3.5 mr-1" />
-              5 монет = -10 мин. (мин. 5 мин.)
+              {{ plural(5, 'обниманя', 'обнимани', 'обнимань') }} = -10 мин. (мин. 5 мин.)
             </p>
             <Button
               @click="upgrade"
