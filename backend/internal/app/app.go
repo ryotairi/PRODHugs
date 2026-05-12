@@ -30,15 +30,16 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
 
+	announcementrepo "go-service-template/internal/repository/announcement"
 	balancerepo "go-service-template/internal/repository/balance"
 	blockrepo "go-service-template/internal/repository/block"
 	dailyrewardrepo "go-service-template/internal/repository/daily_reward"
-	announcementrepo "go-service-template/internal/repository/announcement"
 	hugrepo "go-service-template/internal/repository/hug"
 	intimacyrepo "go-service-template/internal/repository/intimacy"
 	tokenrepo "go-service-template/internal/repository/token"
 	userrepo "go-service-template/internal/repository/user"
 
+	"go-service-template/internal/matrix"
 	hugservice "go-service-template/internal/service/hug"
 	userservice "go-service-template/internal/service/user"
 	"go-service-template/internal/telegram"
@@ -121,20 +122,46 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	// Telegram login: wire login store + service into bot
 	tgBot.SetLoginStore(tgLoginStore, userService)
 
+	// Matrix: client, bot, notifier, link store & login store
+	mxClient, mxErr := matrix.New(a.cfg.Matrix.HomeserverURL, a.cfg.Matrix.UserID, a.cfg.Matrix.AccessToken)
+	if mxErr != nil {
+		a.l.Error("matrix: failed to initialise client, continuing without it", "error", mxErr)
+		mxClient = nil
+	}
+	mxLinkStore := matrix.NewLinkStore()
+	mxLoginStore := matrix.NewLoginStore()
+	var mxBot *matrix.Bot
+	var mxNotifier *matrix.Notifier
+	if mxClient != nil {
+		mxBot = matrix.NewBot(mxClient, mxLinkStore, userRepo, hugService, a.l)
+		mxBot.SetLoginStore(mxLoginStore, userService)
+		mxNotifier = matrix.NewNotifier(mxBot, userRepo, a.l)
+		userService.SetMatrixBot(mxBot, a.cfg.Matrix.UserID)
+	}
+
 	// WebSocket Hub
 	a.hub = ws.NewHub(jwtManager)
 
 	hugService.SetHugCompletedCallback(func(item *models.HugFeedItem, bonusCoins int32, comment *string) {
 		a.hub.Broadcast("hug_completed", hughandler.ToFeedItemDTO(item))
 		tgNotifier.NotifyHugCompleted(context.Background(), item.GiverID, item.ReceiverID, item.HugType, bonusCoins, comment)
+		if mxNotifier != nil {
+			mxNotifier.NotifyHugCompleted(context.Background(), item.GiverID, item.ReceiverID, item.HugType, bonusCoins, comment)
+		}
 	})
 	hugService.SetHugSuggestionCallback(func(targetUserID uuid.UUID, item *models.PendingHugInboxItem, comment *string) {
 		a.hub.SendToUser(targetUserID, "hug_suggestion", hughandler.ToPendingInboxItemDTO(item))
 		tgNotifier.NotifyHugSuggestion(context.Background(), targetUserID, item.ID, item.GiverID, item.HugType, comment)
+		if mxNotifier != nil {
+			mxNotifier.NotifyHugSuggestion(context.Background(), targetUserID, item.ID, item.GiverID, item.HugType, comment)
+		}
 	})
 	hugService.SetHugDeclinedCallback(func(targetUserID uuid.UUID, hugID uuid.UUID, receiverID uuid.UUID) {
 		a.hub.SendToUser(targetUserID, "hug_declined", map[string]string{"hug_id": hugID.String(), "receiver_id": receiverID.String()})
 		go tgNotifier.NotifyHugDeclined(context.Background(), targetUserID, receiverID)
+		if mxNotifier != nil {
+			go mxNotifier.NotifyHugDeclined(context.Background(), targetUserID, receiverID)
+		}
 	})
 	hugService.SetHugCancelledCallback(func(targetUserID uuid.UUID, hugID uuid.UUID) {
 		a.hub.SendToUser(targetUserID, "hug_cancelled", map[string]string{"hug_id": hugID.String()})
@@ -154,6 +181,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	// Handlers
 	userHandler := userhandler.New(userService, jwtManager, a.cfg.JWT.CookieSecure)
 	userHandler.SetTelegramLoginStore(tgLoginStore, a.cfg.Telegram.BotUsername)
+	userHandler.SetMatrixLoginStore(mxLoginStore, a.cfg.Matrix.UserID)
 	hugHandler := hughandler.New(hugService, userService)
 	adminHandler := adminhandler.New(userService)
 
@@ -187,6 +215,11 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 
 	// Telegram bot (long-polling)
 	go tgBot.Run(jobCtx)
+
+	// Matrix bot (sync)
+	if mxBot != nil {
+		go mxBot.Run(jobCtx)
+	}
 
 	// Expire stale pending hugs every 5 minutes.
 	go func() {
@@ -365,6 +398,18 @@ func (a *App) initEcho() error {
 			Rate:  rate.Limit(2),
 			Burst: 5,
 			TTL:   5 * time.Minute,
+		},
+		// Matrix login init: 5 per minute per IP
+		"/api/v1/auth/matrix/init": {
+			Rate:  rate.Every(12 * time.Second),
+			Burst: 5,
+			TTL:   1 * time.Minute,
+		},
+		// Matrix login poll: more lenient (polled every 2 seconds)
+		"/api/v1/auth/matrix/poll": {
+			Rate:  rate.Limit(2),
+			Burst: 5,
+			TTL:   10 * time.Minute,
 		},
 	}))
 

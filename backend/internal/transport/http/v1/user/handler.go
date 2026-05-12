@@ -3,9 +3,10 @@ package user
 import (
 	"context"
 	"go-service-template/internal/jwt"
+	"go-service-template/internal/matrix"
 	"go-service-template/internal/models"
-	"go-service-template/internal/telegram"
 	userService "go-service-template/internal/service/user"
+	"go-service-template/internal/telegram"
 	v1 "go-service-template/internal/transport/http/v1"
 	"time"
 
@@ -21,6 +22,11 @@ type service interface {
 	ChangePassword(ctx context.Context, id uuid.UUID, oldPassword, newPassword string) error
 	GenerateLinkToken(ctx context.Context, userID uuid.UUID) (string, string, error)
 	UnlinkTelegram(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	RequestMatrixLink(ctx context.Context, userID uuid.UUID, matrixID string) (string, string, error)
+	UnlinkMatrix(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	MatrixEnabled() bool
+	MatrixBotUserID() string
+	MatrixBotDeepLink() string
 	SaveRefreshToken(ctx context.Context, jti string, userID uuid.UUID, expiresAtUnix int64) error
 	IsRefreshTokenActive(ctx context.Context, jti string) (bool, error)
 	RevokeRefreshToken(ctx context.Context, jti string) error
@@ -33,11 +39,13 @@ type service interface {
 }
 
 type UserHandler struct {
-	svc          service
-	jwtManager   *jwt.Manager
-	cookieSecure bool
-	loginStore   *telegram.LoginStore
-	botUsername  string
+	svc              service
+	jwtManager       *jwt.Manager
+	cookieSecure     bool
+	loginStore       *telegram.LoginStore
+	botUsername      string
+	matrixLoginStore *matrix.LoginStore
+	matrixBotUserID  string
 }
 
 func New(svc service, jwtManager *jwt.Manager, cookieSecure bool) *UserHandler {
@@ -51,6 +59,13 @@ func (h *UserHandler) SetTelegramLoginStore(store *telegram.LoginStore, botUsern
 	h.botUsername = botUsername
 }
 
+// SetMatrixLoginStore configures the Matrix signup login store and bot MXID
+// for the Matrix login endpoints. Called after construction.
+func (h *UserHandler) SetMatrixLoginStore(store *matrix.LoginStore, botUserID string) {
+	h.matrixLoginStore = store
+	h.matrixBotUserID = botUserID
+}
+
 func toV1User(u *models.User) v1.User {
 	user := v1.User{
 		Id:                   u.ID,
@@ -60,6 +75,7 @@ func toV1User(u *models.User) v1.User {
 		Tag:                  u.Tag,
 		SpecialTag:           u.SpecialTag,
 		TelegramId:           u.TelegramID,
+		MatrixId:             u.MatrixID,
 		CaptchaType:          v1.CaptchaType(u.CaptchaType),
 		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
 	}

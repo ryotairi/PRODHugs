@@ -129,6 +129,9 @@ const HANDLER_ERROR_MAP: Record<string, { field: string | null; message: string 
   },
   CANNOT_BAN_ADMIN: { field: null, message: 'Невозможно заблокировать администратора' },
   TELEGRAM_LOGIN_FAILED: { field: null, message: 'Не удалось войти через Telegram' },
+  INVALID_MATRIX_ID: { field: 'matrix_id', message: 'Неверный формат MXID (пример: @user:matrix.org)' },
+  MATRIX_ID_TAKEN: { field: 'matrix_id', message: 'Этот Matrix аккаунт уже привязан к другому пользователю' },
+  MATRIX_LOGIN_FAILED: { field: null, message: 'Не удалось войти через Matrix' },
 }
 
 export interface ParsedBackendError {

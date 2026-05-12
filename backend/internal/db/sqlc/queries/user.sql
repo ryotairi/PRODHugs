@@ -132,6 +132,29 @@ SELECT EXISTS(
 -- name: GetUserByTelegramID :one
 SELECT * FROM users WHERE telegram_id = $1;
 
+-- name: GetUserMatrixID :one
+SELECT matrix_id, matrix_room_id FROM users WHERE id = $1;
+
+-- name: SetUserMatrixID :one
+UPDATE users
+SET matrix_id = $2, matrix_room_id = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: ClearUserMatrixID :one
+UPDATE users
+SET matrix_id = NULL, matrix_room_id = NULL
+WHERE id = $1
+RETURNING *;
+
+-- name: IsMatrixIDTaken :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE matrix_id = $1 AND id != $2
+) AS taken;
+
+-- name: GetUserByMatrixID :one
+SELECT * FROM users WHERE matrix_id = $1;
+
 -- name: UpdateUserPassword :exec
 UPDATE users
 SET password = $2

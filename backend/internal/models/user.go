@@ -15,15 +15,17 @@ type CreateUser struct {
 }
 
 type User struct {
-	ID             uuid.UUID
-	Username       string
-	Role           string
-	HashedPassword string
-	Gender         *string
-	DisplayName    *string
-	Tag            *string
-	SpecialTag     *string
-	TelegramID     *int64
+	ID                   uuid.UUID
+	Username             string
+	Role                 string
+	HashedPassword       string
+	Gender               *string
+	DisplayName          *string
+	Tag                  *string
+	SpecialTag           *string
+	TelegramID           *int64
+	MatrixID             *string
+	MatrixRoomID         *string
 	BannedAt             *time.Time
 	CreatedAt            *time.Time
 	CaptchaType          string

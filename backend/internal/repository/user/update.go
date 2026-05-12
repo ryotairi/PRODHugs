@@ -87,6 +87,67 @@ func (r *repo) IsTelegramIDTaken(ctx context.Context, telegramID int64, excludeU
 	return taken, nil
 }
 
+// GetMatrixID returns the matrix ID and DM room ID for the given user, or (nil, nil) if not linked.
+func (r *repo) GetMatrixID(ctx context.Context, userID uuid.UUID) (*string, *string, error) {
+	q := repository.Queries(ctx, r.q)
+
+	row, err := q.GetUserMatrixID(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var mid *string
+	if row.MatrixID.Valid {
+		mid = &row.MatrixID.String
+	}
+	var rid *string
+	if row.MatrixRoomID.Valid {
+		rid = &row.MatrixRoomID.String
+	}
+	return mid, rid, nil
+}
+
+// SetMatrixID stores the given matrix ID (and optional DM room ID) for the user.
+func (r *repo) SetMatrixID(ctx context.Context, userID uuid.UUID, matrixID string, roomID string) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	var rid pgtype.Text
+	if roomID != "" {
+		rid = pgtype.Text{String: roomID, Valid: true}
+	}
+
+	u, err := q.SetUserMatrixID(ctx, storage.SetUserMatrixIDParams{
+		ID:           userID,
+		MatrixID:     pgtype.Text{String: matrixID, Valid: true},
+		MatrixRoomID: rid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toModelUser(u), nil
+}
+
+// ClearMatrixID removes the Matrix ID and room from the user.
+func (r *repo) ClearMatrixID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	u, err := q.ClearUserMatrixID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return toModelUser(u), nil
+}
+
+// IsMatrixIDTaken checks if a matrix ID is already bound to another account.
+func (r *repo) IsMatrixIDTaken(ctx context.Context, matrixID string, excludeUserID uuid.UUID) (bool, error) {
+	q := repository.Queries(ctx, r.q)
+
+	taken, err := q.IsMatrixIDTaken(ctx, storage.IsMatrixIDTakenParams{MatrixID: pgtype.Text{String: matrixID, Valid: true}, ID: excludeUserID})
+	if err != nil {
+		return false, err
+	}
+	return taken, nil
+}
+
 func (r *repo) UpdatePassword(ctx context.Context, id uuid.UUID, hashedPassword string) error {
 	q := repository.Queries(ctx, r.q)
 

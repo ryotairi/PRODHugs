@@ -44,6 +44,8 @@ const AUTH_PATHS = [
   '/auth/logout',
   '/auth/telegram/init',
   '/auth/telegram/poll',
+  '/auth/matrix/init',
+  '/auth/matrix/poll',
 ]
 
 function isAuthRequest(config: InternalAxiosRequestConfig | undefined): boolean {
@@ -132,6 +134,12 @@ export const authApi = {
       '/auth/telegram/poll',
       { poll_token: pollToken },
     ),
+  initMatrixLogin: () =>
+    api.post<{ bot_user_id: string; bot_url: string; command: string; poll_token: string }>(
+      '/auth/matrix/init',
+    ),
+  pollMatrixLogin: (pollToken: string) =>
+    api.post<{ token: string; user: any }>('/auth/matrix/poll', { poll_token: pollToken }),
 }
 
 // Hugs
@@ -191,6 +199,12 @@ export const usersApi = {
   createTelegramLinkToken: () =>
     api.post<{ token: string; bot_url: string }>('/users/me/telegram/link-token'),
   unlinkTelegram: () => api.delete('/users/me/telegram'),
+  createMatrixLink: (matrixId: string) =>
+    api.post<{ matrix_id: string; bot_user_id: string; bot_url: string }>(
+      '/users/me/matrix/link',
+      { matrix_id: matrixId },
+    ),
+  unlinkMatrix: () => api.delete('/users/me/matrix'),
   changePassword: (oldPassword: string, newPassword: string) =>
     api.put('/users/me/password', { old_password: oldPassword, new_password: newPassword }),
   blockUser: (userId: string) => api.post(`/users/${userId}/block`),

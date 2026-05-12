@@ -44,6 +44,9 @@ components:
         - INVALID_TELEGRAM_ID
         - TELEGRAM_ID_TAKEN
         - TELEGRAM_LOGIN_FAILED
+        - INVALID_MATRIX_ID
+        - MATRIX_ID_TAKEN
+        - MATRIX_LOGIN_FAILED
         - HUG_TYPE_LOCKED
         - CANNOT_DELETE_ADMIN
         - COMMENT_TOO_LONG
@@ -86,6 +89,9 @@ components:
         telegram_id:
           type: integer
           format: int64
+          nullable: true
+        matrix_id:
+          type: string
           nullable: true
         tag:
           type: string
@@ -1198,6 +1204,161 @@ paths:
       responses:
         '200':
           description: Telegram unlinked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/matrix/init:
+    post:
+      summary: Start a Matrix signup session
+      operationId: initMatrixLogin
+      description: >
+        Creates a new Matrix signup/login session. Returns the bot's MXID, a
+        matrix.to deep-link, and a `!signup <token>` command. The client should
+        instruct the user to DM the bot with the command, and poll
+        /auth/matrix/poll for the result.
+      responses:
+        '200':
+          description: Signup session created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - bot_user_id
+                  - bot_url
+                  - command
+                  - poll_token
+                properties:
+                  bot_user_id:
+                    type: string
+                    description: The bot's MXID (e.g. "@prodhugsbot:matrix.org")
+                  bot_url:
+                    type: string
+                    description: matrix.to deep-link to open a DM with the bot
+                  command:
+                    type: string
+                    description: Command the user must send to the bot (e.g. "!signup xyz")
+                  poll_token:
+                    type: string
+                    description: Token for polling the signup result
+        '503':
+          description: Matrix bot not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/matrix/poll:
+    post:
+      summary: Poll for Matrix login/signup result
+      operationId: pollMatrixLogin
+      description: >
+        Polls the status of a Matrix signup session. Returns 202 while pending,
+        200 with auth response on success, 403 if banned, 404 if expired/not found.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - poll_token
+              properties:
+                poll_token:
+                  type: string
+              additionalProperties: false
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: Refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '202':
+          description: Signup session still pending
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/me/matrix/link:
+    post:
+      summary: Initiate Matrix account linking with a confirmation DM
+      operationId: createMatrixLink
+      description: >
+        Validates the given MXID and asks the bot to open an unencrypted DM
+        with the user. The user must confirm with a reaction (✅) or `!accept`
+        in that DM. The frontend polls GET /users/me until matrix_id is set.
+      security:
+        - BearerAuth: ["user", "admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - matrix_id
+              properties:
+                matrix_id:
+                  type: string
+                  description: MXID to link (e.g. "@user:matrix.org")
+                  minLength: 3
+                  maxLength: 255
+              additionalProperties: false
+      responses:
+        '200':
+          description: Confirmation DM sent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - matrix_id
+                  - bot_user_id
+                  - bot_url
+                properties:
+                  matrix_id: { type: string }
+                  bot_user_id: { type: string }
+                  bot_url: { type: string }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Matrix bot not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/matrix:
+    delete:
+      summary: Unlink Matrix account
+      operationId: unlinkMatrix
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '200':
+          description: Matrix unlinked
           content:
             application/json:
               schema:

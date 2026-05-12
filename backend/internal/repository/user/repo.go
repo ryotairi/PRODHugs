@@ -40,6 +40,14 @@ func toModelUser(u storage.User) *models.User {
 	if u.TelegramID.Valid {
 		telegramID = &u.TelegramID.Int64
 	}
+	var matrixID *string
+	if u.MatrixID.Valid {
+		matrixID = &u.MatrixID.String
+	}
+	var matrixRoomID *string
+	if u.MatrixRoomID.Valid {
+		matrixRoomID = &u.MatrixRoomID.String
+	}
 	var tag *string
 	if u.Tag.Valid {
 		tag = &u.Tag.String
@@ -62,6 +70,8 @@ func toModelUser(u storage.User) *models.User {
 		Tag:                  tag,
 		SpecialTag:           specialTag,
 		TelegramID:           telegramID,
+		MatrixID:             matrixID,
+		MatrixRoomID:         matrixRoomID,
 		BannedAt:             bannedAt,
 		CreatedAt:            createdAt,
 		CaptchaType:          u.CaptchaType,

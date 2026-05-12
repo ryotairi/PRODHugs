@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"go-service-template/internal/models"
 	"go-service-template/internal/db/sqlc/storage"
+	"go-service-template/internal/models"
 	"math/rand/v2"
 	"time"
 
@@ -15,6 +15,7 @@ type repo interface {
 	GetByUsername(ctx context.Context, username string) (*models.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	GetByTelegramID(ctx context.Context, telegramID int64) (*models.User, error)
+	GetByMatrixID(ctx context.Context, matrixID string) (*models.User, error)
 	UpdateSettings(ctx context.Context, id uuid.UUID, gender *string, displayName *string, tag *string) (*models.User, error)
 	AdminUpdateTag(ctx context.Context, id uuid.UUID, tag *string) (*models.User, error)
 	AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialTag *string) (*models.User, error)
@@ -22,6 +23,10 @@ type repo interface {
 	SetTelegramID(ctx context.Context, userID uuid.UUID, telegramID int64) (*models.User, error)
 	ClearTelegramID(ctx context.Context, userID uuid.UUID) (*models.User, error)
 	IsTelegramIDTaken(ctx context.Context, telegramID int64, excludeUserID uuid.UUID) (bool, error)
+	GetMatrixID(ctx context.Context, userID uuid.UUID) (*string, *string, error)
+	SetMatrixID(ctx context.Context, userID uuid.UUID, matrixID, roomID string) (*models.User, error)
+	ClearMatrixID(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	IsMatrixIDTaken(ctx context.Context, matrixID string, excludeUserID uuid.UUID) (bool, error)
 	UpdatePassword(ctx context.Context, id uuid.UUID, hashedPassword string) error
 	BanUser(ctx context.Context, id uuid.UUID) (*models.User, error)
 	UnbanUser(ctx context.Context, id uuid.UUID) (*models.User, error)
@@ -35,7 +40,7 @@ type repo interface {
 	SearchUsersAdmin(ctx context.Context, query string, limit, offset int32) ([]*models.AdminUser, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
 	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
-	
+
 	CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt time.Time) (storage.SudokuCaptcha, error)
 	GetSudokuCaptcha(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
 	IncrementSudokuErrors(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
@@ -75,6 +80,13 @@ type telegramLinkStore interface {
 	GenerateToken(userID uuid.UUID) (string, error)
 }
 
+// matrixLinkInitiator is implemented by the Matrix bot; it opens an
+// unencrypted DM with the given MXID and posts a confirmation request.
+type matrixLinkInitiator interface {
+	InitiateLink(ctx context.Context, userID uuid.UUID, matrixID string) (roomID, eventID string, err error)
+	Enabled() bool
+}
+
 type announcementRepo interface {
 	GetActiveForUser(ctx context.Context, userID uuid.UUID) (*models.Announcement, error)
 	GetActive(ctx context.Context) (*models.Announcement, error)
@@ -94,7 +106,9 @@ type service struct {
 	jwtManager        jwtManager
 	telegramLinkStore telegramLinkStore
 	announcementRepo  announcementRepo
-	botUsername        string
+	botUsername       string
+	matrixBot         matrixLinkInitiator
+	matrixBotUserID   string
 	tx                transactor
 	rng               *rand.Rand
 
@@ -144,6 +158,21 @@ func WithAnnouncementRepo(ar announcementRepo) func(*service) {
 func (s *service) SetTelegramLinkStore(ls telegramLinkStore, botUsername string) {
 	s.telegramLinkStore = ls
 	s.botUsername = botUsername
+}
+
+// SetMatrixBot configures the Matrix bot and the bot MXID for link initiation.
+// Called after construction to break circular deps.
+func (s *service) SetMatrixBot(bot matrixLinkInitiator, botUserID string) {
+	s.matrixBot = bot
+	s.matrixBotUserID = botUserID
+}
+
+// MatrixBotUserID returns the configured Matrix bot MXID (may be empty).
+func (s *service) MatrixBotUserID() string { return s.matrixBotUserID }
+
+// MatrixEnabled reports whether the Matrix integration is usable.
+func (s *service) MatrixEnabled() bool {
+	return s.matrixBot != nil && s.matrixBot.Enabled() && s.matrixBotUserID != ""
 }
 
 func (s *service) SetAnnouncementCreatedCallback(cb AnnouncementCallback) {

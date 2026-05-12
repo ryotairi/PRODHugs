@@ -9,6 +9,8 @@ import {
   type FieldError,
 } from '@/lib/validation'
 import { useTelegramLogin } from '@/composables/useTelegramLogin'
+import { useMatrixLogin } from '@/composables/useMatrixLogin'
+import MatrixSignupDialog from '@/components/MatrixSignupDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,7 +25,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import PasswordRequirements from '@/components/PasswordRequirements.vue'
-import { Send, Loader2 } from 'lucide-vue-next'
+import { Send, Loader2, MessageSquare } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const {
@@ -33,6 +35,14 @@ const {
   startTelegramLogin,
   cancelTelegramLogin,
 } = useTelegramLogin()
+const {
+  matrixPolling,
+  matrixError,
+  matrixLoading,
+  matrixSession,
+  startMatrixLogin,
+  cancelMatrixLogin,
+} = useMatrixLogin()
 const username = ref('')
 const displayName = ref('')
 const password = ref('')
@@ -300,7 +310,7 @@ async function handleRegister() {
           </Button>
         </form>
         <!-- Telegram registration section -->
-        <div class="mt-6 flex flex-col items-center">
+        <div class="mt-6 flex flex-col items-center gap-2">
           <Separator class="my-2 w-full" />
           <Button
             type="button"
@@ -312,8 +322,23 @@ async function handleRegister() {
             <Send class="w-4 h-4" />
             {{ telegramLoading ? 'Открывается бот...' : 'Регистрация через Telegram' }}
           </Button>
-          <p v-if="telegramError" class="mt-2 text-sm text-destructive text-center">
+          <p v-if="telegramError" class="text-sm text-destructive text-center">
             {{ telegramError }}
+          </p>
+
+          <!-- Matrix registration -->
+          <Button
+            type="button"
+            variant="outline"
+            class="w-full flex items-center justify-center gap-2"
+            :disabled="matrixLoading"
+            @click="startMatrixLogin"
+          >
+            <MessageSquare class="w-4 h-4" />
+            {{ matrixLoading ? 'Подготовка...' : 'Регистрация через Matrix' }}
+          </Button>
+          <p v-if="matrixError && !matrixPolling" class="text-sm text-destructive text-center">
+            {{ matrixError }}
           </p>
         </div>
       </CardContent>
@@ -329,5 +354,16 @@ async function handleRegister() {
         </p>
       </CardFooter>
     </Card>
+
+    <MatrixSignupDialog
+      v-if="matrixSession"
+      :open="matrixPolling"
+      :bot-user-id="matrixSession.botUserId"
+      :bot-url="matrixSession.botUrl"
+      :command="matrixSession.command"
+      :error="matrixError"
+      mode="register"
+      @cancel="cancelMatrixLogin"
+    />
   </div>
 </template>

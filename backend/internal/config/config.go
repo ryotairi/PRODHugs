@@ -17,11 +17,18 @@ type Config struct {
 	Valkey     valkey
 	JWT        jwt
 	Telegram   telegram
+	Matrix     matrix
 }
 
 type telegram struct {
 	BotToken    string `env:"TELEGRAM_BOT_TOKEN"`
 	BotUsername string `env:"TELEGRAM_BOT_USERNAME"`
+}
+
+type matrix struct {
+	HomeserverURL string `env:"MATRIX_HOMESERVER_URL"`
+	UserID        string `env:"MATRIX_USER_ID"`
+	AccessToken   string `env:"MATRIX_ACCESS_TOKEN"`
 }
 
 type httpServer struct {

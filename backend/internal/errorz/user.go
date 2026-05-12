@@ -14,4 +14,6 @@ var (
 	ErrCannotBlockSelf    = errors.New("cannot block yourself")
 	ErrInvalidTelegramID  = errors.New("invalid telegram ID")
 	ErrTelegramIDTaken    = errors.New("telegram ID already linked to another account")
+	ErrInvalidMatrixID    = errors.New("invalid matrix ID")
+	ErrMatrixIDTaken      = errors.New("matrix ID already linked to another account")
 )
