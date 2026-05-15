@@ -100,33 +100,16 @@ LIMIT @lim::int OFFSET @off::int;
 SELECT
     u.id,
     u.username,
-    u.role,
     u.gender,
     u.display_name,
     u.tag,
     u.special_tag,
-    COALESCE(given.cnt, 0) + COALESCE(received.cnt, 0) AS total_hugs,
-    COALESCE(given.cnt, 0) AS hugs_given,
-    COALESCE(received.cnt, 0) AS hugs_received
+    COALESCE(b.amount, 0)::int AS balance
 FROM users u
-LEFT JOIN (
-    SELECT giver_id, COUNT(*) AS cnt FROM hugs WHERE status = 'completed' GROUP BY giver_id
-) given ON given.giver_id = u.id
-LEFT JOIN (
-    SELECT receiver_id, COUNT(*) AS cnt FROM hugs WHERE status = 'completed' GROUP BY receiver_id
-) received ON received.receiver_id = u.id
+LEFT JOIN balances b ON b.user_id = u.id
 WHERE u.banned_at IS NULL
-ORDER BY total_hugs DESC
+ORDER BY balance DESC
 LIMIT @lim::int OFFSET @off::int;
-
--- name: GetUserStats :one
-SELECT
-    COUNT(*) FILTER (WHERE giver_id = @user_id::uuid)::bigint AS hugs_given,
-    COUNT(*) FILTER (WHERE receiver_id = @user_id::uuid)::bigint AS hugs_received,
-    COUNT(*)::bigint AS total_hugs
-FROM hugs
-WHERE (giver_id = @user_id::uuid OR receiver_id = @user_id::uuid)
-  AND status = 'completed';
 
 -- name: GetRecentHugsFeed :many
 SELECT
@@ -153,7 +136,7 @@ LIMIT @lim::int OFFSET @off::int;
 UPDATE users
 SET gender = $2, display_name = $3, tag = $4
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: GetUserTelegramID :one
 SELECT telegram_id FROM users WHERE id = $1;
@@ -246,13 +229,13 @@ LIMIT @lim::int OFFSET @off::int;
 UPDATE users
 SET username = $2
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: AdminUpdateGender :one
 UPDATE users
 SET gender = $2
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: AdminUpdatePassword :exec
 UPDATE users
@@ -272,25 +255,25 @@ RETURNING hug_slots;
 UPDATE users
 SET display_name = $2
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: AdminUpdateTag :one
 UPDATE users
 SET tag = $2
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: AdminUpdateSpecialTag :one
 UPDATE users
 SET special_tag = $2
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: AdminUpdateCaptchaType :one
 UPDATE users
 SET captcha_type = $2
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: SetCaptchaCooldown :exec
 UPDATE users
@@ -305,10 +288,10 @@ WHERE id = $1 AND role != 'admin';
 UPDATE users
 SET promoted_until = NULL, promotion_message = NULL
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
 
 -- name: PromoteUser :one
 UPDATE users
 SET promoted_until = $2, promotion_message = $3
 WHERE id = $1
-RETURNING *;
+RETURNING *, (SELECT COALESCE(amount, 0) FROM balances WHERE user_id = users.id)::int AS balance;
