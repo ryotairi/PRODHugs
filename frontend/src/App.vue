@@ -206,5 +206,5 @@ onUnmounted(() => {
   <template v-else>
     <RouterView />
   </template>
-  <Toaster position="top-right" />
+  <Toaster position="top-right" theme="dark" />
 </template>

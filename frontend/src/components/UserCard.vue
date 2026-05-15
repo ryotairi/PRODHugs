@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useOnlineStore } from '@/stores/online'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Send, Star, Zap } from 'lucide-vue-next'
+import { Send, Star, Zap, Coins as Coin } from 'lucide-vue-next'
 import HugButton from './HugButton.vue'
 import UserTag from './UserTag.vue'
 
@@ -19,6 +19,7 @@ const props = defineProps<{
     avg_response_time?: number | null
     promoted_until?: string | null
     promotion_message?: string | null
+    promotion_bid?: number | null
   }
 }>()
 
@@ -62,6 +63,10 @@ const formatResponseTime = (seconds: number) => {
             {{ user.display_name || user.username }}
           </p>
           <UserTag :tag="user.tag" />
+          <div v-if="user.promotion_bid" class="flex items-center gap-1 bg-prod-yellow/10 px-1 py-0.5 rounded border border-prod-yellow/20 shrink-0">
+            <Coin class="size-2.5 text-prod-yellow" />
+            <span class="text-[9px] font-bold text-prod-yellow">{{ user.promotion_bid }}</span>
+          </div>
           <Send v-if="user.is_telegram_linked" class="size-3 text-[#229ED9]" />
           <Star v-if="isPromoted" class="size-3 text-prod-yellow fill-prod-yellow" />
         </div>
