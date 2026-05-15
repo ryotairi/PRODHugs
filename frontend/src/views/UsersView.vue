@@ -144,19 +144,6 @@ onUnmounted(() => {
 
     <OutgoingHugsSection />
 
-    <div v-if="!isMePromoted" class="rounded-[10px] border border-prod-yellow/30 bg-prod-yellow/5 p-4 flex items-center justify-between gap-4">
-      <div class="space-y-1">
-        <h3 class="text-sm font-semibold flex items-center gap-1.5">
-          <Star class="size-4 text-prod-yellow fill-prod-yellow" />
-          Хотите в топ?
-        </h3>
-        <p class="text-xs text-muted-foreground">Продвиньте свой профиль, чтобы вас видели первым!</p>
-      </div>
-      <Button variant="outline" size="sm" class="border-prod-yellow hover:bg-prod-yellow hover:text-black shrink-0" @click="promotionOpen = true">
-        В топ
-      </Button>
-    </div>
-
     <div class="relative">
       <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
