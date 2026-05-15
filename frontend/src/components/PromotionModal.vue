@@ -54,12 +54,10 @@ async function handlePromote() {
   loading.value = true
   try {
     await usersApi.promote(bid.value, message.value || undefined)
-    toast.success('VIP-статус активирован!', {
-      description: `Вы в топе за ${bid.value} монет.`,
-    })
+    toast.success(`VIP-статус активирован! Вы в топе за ${bid.value} монет.`)
     emit('success')
     emit('update:open', false)
-    await auth.fetchMe()
+    await Promise.all([auth.fetchMe(), hugsStore.fetchBalance()])
   } catch (error: any) {
     toast.error('Ошибка', {
       description: error.response?.data?.message || 'Не удалось активировать VIP',
