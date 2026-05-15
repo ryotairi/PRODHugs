@@ -102,16 +102,33 @@ LIMIT @lim::int OFFSET @off::int;
 SELECT
     u.id,
     u.username,
+    u.role,
     u.gender,
     u.display_name,
     u.tag,
     u.special_tag,
-    COALESCE(b.amount, 0)::int AS balance
+    COALESCE(given.cnt, 0) + COALESCE(received.cnt, 0) AS total_hugs,
+    COALESCE(given.cnt, 0) AS hugs_given,
+    COALESCE(received.cnt, 0) AS hugs_received
 FROM users u
-LEFT JOIN balances b ON b.user_id = u.id
+LEFT JOIN (
+    SELECT giver_id, COUNT(*) AS cnt FROM hugs WHERE status = 'completed' GROUP BY giver_id
+) given ON given.giver_id = u.id
+LEFT JOIN (
+    SELECT receiver_id, COUNT(*) AS cnt FROM hugs WHERE status = 'completed' GROUP BY receiver_id
+) received ON received.receiver_id = u.id
 WHERE u.banned_at IS NULL
-ORDER BY balance DESC
+ORDER BY total_hugs DESC
 LIMIT @lim::int OFFSET @off::int;
+
+-- name: GetUserStats :one
+SELECT
+    COUNT(*) FILTER (WHERE giver_id = @user_id::uuid)::bigint AS hugs_given,
+    COUNT(*) FILTER (WHERE receiver_id = @user_id::uuid)::bigint AS hugs_received,
+    COUNT(*)::bigint AS total_hugs
+FROM hugs
+WHERE (giver_id = @user_id::uuid OR receiver_id = @user_id::uuid)
+  AND status = 'completed';
 
 -- name: GetRecentHugsFeed :many
 SELECT

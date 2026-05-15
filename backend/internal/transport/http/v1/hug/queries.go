@@ -265,6 +265,10 @@ func (h *HugHandler) GetUserProfile(ctx context.Context, req v1.GetUserProfileRe
 	return resp, nil
 }
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func (h *HugHandler) SearchUsers(ctx context.Context, req v1.SearchUsersRequestObject) (v1.SearchUsersResponseObject, error) {
 	viewerID := ctx.Value(middleware.UserIDContextKey).(uuid.UUID)
 	query := ""
@@ -305,7 +309,7 @@ func (h *HugHandler) SearchUsers(ctx context.Context, req v1.SearchUsersRequestO
 			AvgResponseTime:  avgResponseTime,
 			PromotedUntil:    u.PromotedUntil,
 			PromotionMessage: u.PromotionMessage,
-			PromotionBid:     int(u.PromotionBid),
+			PromotionBid:     ptr(int(u.PromotionBid)),
 		}
 		if u.Gender != nil {
 			g := v1.Gender(*u.Gender)

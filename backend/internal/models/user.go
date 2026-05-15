@@ -30,6 +30,7 @@ type User struct {
 	CaptchaCooldownUntil *time.Time
 	PromotedUntil        *time.Time
 	PromotionMessage     *string
+	PromotionBid         int32
 	IsTelegramLinked     bool
 	AvgResponseTime      *float64
 	Balance              int32
@@ -51,6 +52,7 @@ type AdminUser struct {
 	CaptchaCooldownUntil *time.Time
 	PromotedUntil        *time.Time
 	PromotionMessage     *string
+	PromotionBid         int32
 }
 
 type AdminStats struct {

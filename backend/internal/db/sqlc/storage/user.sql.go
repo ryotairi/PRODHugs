@@ -430,15 +430,23 @@ const getLeaderboard = `-- name: GetLeaderboard :many
 SELECT
     u.id,
     u.username,
+    u.role,
     u.gender,
     u.display_name,
     u.tag,
     u.special_tag,
-    COALESCE(b.amount, 0)::int AS balance
+    COALESCE(given.cnt, 0) + COALESCE(received.cnt, 0) AS total_hugs,
+    COALESCE(given.cnt, 0) AS hugs_given,
+    COALESCE(received.cnt, 0) AS hugs_received
 FROM users u
-LEFT JOIN balances b ON b.user_id = u.id
+LEFT JOIN (
+    SELECT giver_id, COUNT(*) AS cnt FROM hugs WHERE status = 'completed' GROUP BY giver_id
+) given ON given.giver_id = u.id
+LEFT JOIN (
+    SELECT receiver_id, COUNT(*) AS cnt FROM hugs WHERE status = 'completed' GROUP BY receiver_id
+) received ON received.receiver_id = u.id
 WHERE u.banned_at IS NULL
-ORDER BY balance DESC
+ORDER BY total_hugs DESC
 LIMIT $2::int OFFSET $1::int
 `
 
@@ -448,13 +456,16 @@ type GetLeaderboardParams struct {
 }
 
 type GetLeaderboardRow struct {
-	ID          uuid.UUID
-	Username    string
-	Gender      pgtype.Text
-	DisplayName pgtype.Text
-	Tag         pgtype.Text
-	SpecialTag  pgtype.Text
-	Balance     int32
+	ID           uuid.UUID
+	Username     string
+	Role         string
+	Gender       pgtype.Text
+	DisplayName  pgtype.Text
+	Tag          pgtype.Text
+	SpecialTag   pgtype.Text
+	TotalHugs    int32
+	HugsGiven    int64
+	HugsReceived int64
 }
 
 func (q *Queries) GetLeaderboard(ctx context.Context, arg GetLeaderboardParams) ([]GetLeaderboardRow, error) {
@@ -469,11 +480,14 @@ func (q *Queries) GetLeaderboard(ctx context.Context, arg GetLeaderboardParams) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.Username,
+			&i.Role,
 			&i.Gender,
 			&i.DisplayName,
 			&i.Tag,
 			&i.SpecialTag,
-			&i.Balance,
+			&i.TotalHugs,
+			&i.HugsGiven,
+			&i.HugsReceived,
 		); err != nil {
 			return nil, err
 		}
@@ -758,6 +772,29 @@ func (q *Queries) GetUserSlots(ctx context.Context, id uuid.UUID) (int32, error)
 	var hug_slots int32
 	err := row.Scan(&hug_slots)
 	return hug_slots, err
+}
+
+const getUserStats = `-- name: GetUserStats :one
+SELECT
+    COUNT(*) FILTER (WHERE giver_id = $1::uuid)::bigint AS hugs_given,
+    COUNT(*) FILTER (WHERE receiver_id = $1::uuid)::bigint AS hugs_received,
+    COUNT(*)::bigint AS total_hugs
+FROM hugs
+WHERE (giver_id = $1::uuid OR receiver_id = $1::uuid)
+  AND status = 'completed'
+`
+
+type GetUserStatsRow struct {
+	HugsGiven    int64
+	HugsReceived int64
+	TotalHugs    int64
+}
+
+func (q *Queries) GetUserStats(ctx context.Context, userID uuid.UUID) (GetUserStatsRow, error) {
+	row := q.db.QueryRow(ctx, getUserStats, userID)
+	var i GetUserStatsRow
+	err := row.Scan(&i.HugsGiven, &i.HugsReceived, &i.TotalHugs)
+	return i, err
 }
 
 const getUserTelegramID = `-- name: GetUserTelegramID :one
