@@ -95,6 +95,9 @@ components:
           type: string
           nullable: true
           maxLength: 20
+        is_recently_active:
+          type: boolean
+          description: True if the user was active recently
         captcha_type:
           $ref: '#/components/schemas/CaptchaType'
         captcha_cooldown_until:
@@ -111,6 +114,14 @@ components:
         promotion_bid:
           type: integer
           description: Current bid for this promotion spot
+        vip_remaining_seconds:
+          type: integer
+          description: Remaining VIP time in seconds
+        vip_cooldown_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the user can bid again
         balance:
           type: integer
           description: User's current balance (returned for /users/me or own profile)
@@ -387,6 +398,9 @@ components:
           type: string
           nullable: true
         is_telegram_linked: { type: boolean }
+        is_recently_active:
+          type: boolean
+          description: True if the user was active recently
         avg_response_time:
           type: number
           nullable: true
@@ -401,6 +415,14 @@ components:
         promotion_bid:
           type: integer
           description: Current bid for this promotion spot
+        vip_remaining_seconds:
+          type: integer
+          description: Remaining VIP time in seconds
+        vip_cooldown_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the user can bid again
 
     PromoteUserRequest:
       type: object
@@ -612,6 +634,14 @@ components:
         promotion_bid:
           type: integer
           description: Current bid for this promotion spot
+        vip_remaining_seconds:
+          type: integer
+          description: Remaining VIP time in seconds
+        vip_cooldown_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the user can bid again
 
     AdminStats:
       type: object
@@ -1363,6 +1393,24 @@ paths:
       responses:
         '200':
           description: List of matching users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/vips:
+    get:
+      summary: Get currently promoted VIP users
+      operationId: getVIPUsers
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '200':
+          description: List of VIP users
           content:
             application/json:
               schema:

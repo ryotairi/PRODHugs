@@ -11,8 +11,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -24,8 +29,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -36,10 +46,20 @@ SELECT
     u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
     (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
     u.promoted_until, u.promotion_message, u.promotion_bid,
+    u.vip_remaining_seconds, u.vip_cooldown_until,
+    (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    ))::bool AS is_recently_active,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
@@ -57,10 +77,19 @@ WHERE (u.username ILIKE '%' || @query::text || '%' OR u.display_name ILIKE '%' |
 ORDER BY 
     (u.promoted_until > NOW()) DESC,
     u.promotion_bid DESC,
+    (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    )) DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ) ASC NULLS LAST,
     COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
@@ -70,10 +99,20 @@ SELECT
     u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
     (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
     u.promoted_until, u.promotion_message, u.promotion_bid,
+    u.vip_remaining_seconds, u.vip_cooldown_until,
+    (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    ))::bool AS is_recently_active,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
@@ -90,13 +129,46 @@ WHERE u.banned_at IS NULL
 ORDER BY 
     (u.promoted_until > NOW()) DESC,
     u.promotion_bid DESC,
+    (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    )) DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ) ASC NULLS LAST,
     COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
+
+-- name: ListVIPUsers :many
+SELECT 
+    u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
+    (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
+    u.promoted_until, u.promotion_message, u.promotion_bid,
+    u.vip_remaining_seconds, u.vip_cooldown_until,
+    (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    ))::bool AS is_recently_active,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
+    ), -1)::float AS avg_response_time
+FROM users u
+WHERE u.promoted_until > NOW() AND u.banned_at IS NULL
+ORDER BY u.promotion_bid DESC;
 
 -- name: GetLeaderboard :many
 SELECT
@@ -183,8 +255,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -216,6 +293,7 @@ SELECT COUNT(*) FROM users WHERE banned_at IS NOT NULL;
 -- name: ListUsersAdmin :many
 SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.captcha_type, u.captcha_cooldown_until,
        u.promoted_until, u.promotion_message, u.promotion_bid,
+    u.vip_remaining_seconds, u.vip_cooldown_until,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -231,6 +309,7 @@ LIMIT @lim::int OFFSET @off::int;
 -- name: SearchUsersAdmin :many
 SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.captcha_type, u.captcha_cooldown_until,
        u.promoted_until, u.promotion_message, u.promotion_bid,
+    u.vip_remaining_seconds, u.vip_cooldown_until,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -294,20 +373,37 @@ SET captcha_type = $2
 WHERE id = $1
 RETURNING *;
 
--- name: SetCaptchaCooldown :exec
+-- name: SetVipCooldown :one
 UPDATE users
-SET captcha_cooldown_until = $2
-WHERE id = $1;
+SET vip_cooldown_until = $2, vip_remaining_seconds = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateVipBudget :one
+UPDATE users
+SET vip_remaining_seconds = $2
+WHERE id = $1
+RETURNING *;
 
 -- name: AdminDeleteUser :execrows
 DELETE FROM users
 WHERE id = $1 AND role != 'admin';
+
+-- name: ClearExpiredPromotions :execrows
+UPDATE users
+SET promoted_until = NULL, promotion_message = NULL, promotion_bid = 0
+WHERE promoted_until < NOW();
 
 -- name: AdminClearPromotion :one
 UPDATE users
 SET promoted_until = NULL, promotion_message = NULL, promotion_bid = 0
 WHERE id = $1
 RETURNING *;
+
+-- name: SetCaptchaCooldown :exec
+UPDATE users
+SET captcha_cooldown_until = $2
+WHERE id = $1;
 
 -- name: PromoteUser :one
 UPDATE users

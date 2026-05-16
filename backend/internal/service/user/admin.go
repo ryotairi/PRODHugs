@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"time"
 	"go-service-template/internal/models"
 	"go-service-template/pkg/crypto"
 
@@ -75,6 +76,38 @@ func (s *service) AdminDeleteUser(ctx context.Context, id uuid.UUID) error {
 	return s.repo.AdminDeleteUser(ctx, id)
 }
 
+func (s *service) ClearExpiredPromotions(ctx context.Context) (int64, error) {
+	vips, err := s.repo.ListVIPUsers(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	var expiredCount int64
+	for i, u := range vips {
+		// Only first 3 are considered active and lose time
+		if i < 3 {
+			newRemaining := u.VipRemainingSeconds - 60
+			if newRemaining <= 0 {
+				// Expired!
+				_, err := s.repo.AdminClearPromotion(ctx, u.ID)
+				if err == nil {
+					// Set 6h cooldown and reset budget for next time
+					_, _ = s.repo.SetVipCooldown(ctx, u.ID, time.Now().Add(6*time.Hour), 86400)
+					expiredCount++
+				}
+			} else {
+				// Deduct time
+				_, _ = s.repo.UpdateVipBudget(ctx, u.ID, newRemaining)
+			}
+		}
+	}
+
+	if expiredCount > 0 && s.onPromotionUpdated != nil {
+		s.onPromotionUpdated()
+	}
+	return expiredCount, nil
+}
+
 func (s *service) AdminUpdateBalance(ctx context.Context, id uuid.UUID, amount int32) (*models.Balance, error) {
 	return s.balanceRepo.AdminSetBalance(ctx, id, amount)
 }
@@ -84,5 +117,9 @@ func (s *service) AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, capt
 }
 
 func (s *service) AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	return s.repo.AdminClearPromotion(ctx, id)
+	u, err := s.repo.AdminClearPromotion(ctx, id)
+	if err == nil && s.onPromotionUpdated != nil {
+		s.onPromotionUpdated()
+	}
+	return u, err
 }

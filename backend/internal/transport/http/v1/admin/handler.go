@@ -55,6 +55,8 @@ func toV1User(u *models.User) v1.User {
 		PromotedUntil:        u.PromotedUntil,
 		PromotionMessage:     u.PromotionMessage,
 		PromotionBid:         ptr(int(u.PromotionBid)),
+		VipRemainingSeconds:  ptr(int(u.VipRemainingSeconds)),
+		VipCooldownUntil:     u.VipCooldownUntil,
 		Balance:              &bal,
 	}
 	if u.Gender != nil {
@@ -78,6 +80,8 @@ func toV1AdminUser(u *models.User) v1.AdminUser {
 		PromotedUntil:        u.PromotedUntil,
 		PromotionMessage:     u.PromotionMessage,
 		PromotionBid:         ptr(int(u.PromotionBid)),
+		VipRemainingSeconds:  ptr(int(u.VipRemainingSeconds)),
+		VipCooldownUntil:     u.VipCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)
@@ -105,6 +109,8 @@ func toV1AdminUserFromAdmin(u *models.AdminUser) v1.AdminUser {
 		PromotedUntil:        u.PromotedUntil,
 		PromotionMessage:     u.PromotionMessage,
 		PromotionBid:         ptr(int(u.PromotionBid)),
+		VipRemainingSeconds:  ptr(int(u.VipRemainingSeconds)),
+		VipCooldownUntil:     u.VipCooldownUntil,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)

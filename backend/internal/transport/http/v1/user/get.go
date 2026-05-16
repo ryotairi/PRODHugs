@@ -65,3 +65,18 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, req v1.GetCurrentUserR
 	resp := v1.GetCurrentUser200JSONResponse(toV1User(u))
 	return resp, nil
 }
+
+func (h *UserHandler) GetVIPUsers(ctx context.Context, req v1.GetVIPUsersRequestObject) (v1.GetVIPUsersResponseObject, error) {
+	users, err := h.svc.ListVIPUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(v1.GetVIPUsers200JSONResponse, len(users))
+	for i, u := range users {
+		result[i] = toV1UserListItem(u)
+	}
+
+	return result, nil
+}
+

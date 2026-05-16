@@ -119,6 +119,8 @@ type User struct {
 	PromotedUntil        pgtype.Timestamptz
 	PromotionMessage     pgtype.Text
 	PromotionBid         int32
+	VipRemainingSeconds  int32
+	VipCooldownUntil     pgtype.Timestamptz
 }
 
 type UserBlock struct {

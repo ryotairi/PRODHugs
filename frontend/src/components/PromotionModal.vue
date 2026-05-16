@@ -34,9 +34,12 @@ const bid = ref(10)
 const message = ref('')
 
 const minBid = computed(() => {
-  // To get into top 3, we need to outbid the 3rd person if all slots are full
-  // But for simplicity, let's just say min is current highest + 1 or a base price
-  return 5
+  // If there are less than 3 VIPs, we just need the base price
+  if (hugsStore.vips.length < 3) return 5
+  
+  // If all slots are full, we need to outbid the 3rd person
+  const lowestVIPBid = hugsStore.vips[2]?.promotion_bid ?? 0
+  return lowestVIPBid + 1
 })
 
 const canAfford = computed(() => {
@@ -54,10 +57,14 @@ async function handlePromote() {
   loading.value = true
   try {
     await usersApi.promote(bid.value, message.value || undefined)
-    toast.success(`VIP-статус активирован! Вы в топе за ${bid.value} монет.`)
+    toast.success(`VIP-статус активирован! Ты в топе за ${bid.value} монет.`)
     emit('success')
     emit('update:open', false)
-    await Promise.all([auth.fetchMe(), hugsStore.fetchBalance()])
+    await Promise.all([
+      auth.fetchMe(), 
+      hugsStore.fetchBalance(),
+      hugsStore.fetchVIPs()
+    ])
   } catch (error: any) {
     toast.error('Ошибка', {
       description: error.response?.data?.message || 'Не удалось активировать VIP',
@@ -77,40 +84,30 @@ async function handlePromote() {
           Стать VIP-пользователем
         </DialogTitle>
         <DialogDescription>
-          Предложите самую высокую ставку, чтобы занять место в топе!
+          Предложи самую высокую ставку, чтобы занять место в топе! VIP-статус действует ровно 24 часа.
         </DialogDescription>
       </DialogHeader>
 
       <div class="grid gap-4 py-4">
         <div class="space-y-2">
-          <Label for="bid">Ваша ставка</Label>
-          <div class="relative">
-            <Coin class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-prod-yellow" />
-            <Input
+          <Label for="bid">Твоя ставка</Label>
+          <div class="flex items-center gap-2 rounded-md border bg-background px-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            <Coin class="size-4 shrink-0 text-prod-yellow" />
+            <input
               id="bid"
               v-model.number="bid"
               type="number"
-              class="pl-9"
+              class="flex h-9 w-full bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               :min="minBid"
               placeholder="Введите количество монет"
             />
           </div>
-          <p class="text-[10px] text-muted-foreground">Минимальная ставка: {{ minBid }} монет. Ваша позиция зависит от суммы.</p>
-        </div>
-
-        <div class="space-y-2">
-          <Label for="message">Текст в профиле</Label>
-          <Input
-            id="message"
-            v-model="message"
-            placeholder="Например: Спонсорское место"
-            maxlength="100"
-          />
+          <p class="text-[10px] text-muted-foreground">Минимальная ставка: {{ minBid }} монет. Твоя позиция зависит от суммы.</p>
         </div>
 
         <div class="rounded-lg bg-muted p-3">
           <div class="flex items-center justify-between text-sm">
-            <span>Ваш баланс:</span>
+            <span>Твой баланс:</span>
             <span class="font-bold text-prod-yellow">{{ auth.user?.balance ?? 0 }} монет</span>
           </div>
         </div>

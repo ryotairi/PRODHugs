@@ -34,10 +34,14 @@ type repo interface {
 	AdminUpdateDisplayName(ctx context.Context, id uuid.UUID, displayName *string) (*models.User, error)
 	SearchUsersAdmin(ctx context.Context, query string, limit, offset int32) ([]*models.AdminUser, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
+	ClearExpiredPromotions(ctx context.Context) (int64, error)
+	ListVIPUsers(ctx context.Context) ([]*models.User, error)
 	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
 	AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error)
 	PromoteUser(ctx context.Context, id uuid.UUID, promotedUntil time.Time, message *string, bid int32) (*models.User, error)
-	
+	SetVipCooldown(ctx context.Context, id uuid.UUID, cooldownUntil time.Time, remainingSeconds int32) (*models.User, error)
+	UpdateVipBudget(ctx context.Context, id uuid.UUID, remainingSeconds int32) (*models.User, error)
+
 	CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt time.Time) (storage.SudokuCaptcha, error)
 	GetSudokuCaptcha(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
 	IncrementSudokuErrors(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)
@@ -88,6 +92,7 @@ type announcementRepo interface {
 // AnnouncementCallback is called when an announcement is created or removed.
 type AnnouncementCallback func(announcement *models.Announcement)
 type AnnouncementRemovedCallback func(id uuid.UUID)
+type PromotionUpdatedCallback func()
 
 type service struct {
 	repo              repo
@@ -102,6 +107,7 @@ type service struct {
 
 	onAnnouncementCreated AnnouncementCallback
 	onAnnouncementRemoved AnnouncementRemovedCallback
+	onPromotionUpdated    PromotionUpdatedCallback
 }
 
 func New(repo repo, jwtManager jwtManager, opts ...func(*service)) *service {
@@ -154,4 +160,8 @@ func (s *service) SetAnnouncementCreatedCallback(cb AnnouncementCallback) {
 
 func (s *service) SetAnnouncementRemovedCallback(cb AnnouncementRemovedCallback) {
 	s.onAnnouncementRemoved = cb
+}
+
+func (s *service) SetPromotionUpdatedCallback(cb PromotionUpdatedCallback) {
+	s.onPromotionUpdated = cb
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 	"go-service-template/internal/db/sqlc/storage"
 	"go-service-template/internal/errorz"
 	"go-service-template/internal/models"
@@ -147,6 +148,11 @@ func (r *repo) AdminDeleteUser(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (r *repo) ClearExpiredPromotions(ctx context.Context) (int64, error) {
+	q := repository.Queries(ctx, r.q)
+	return q.ClearExpiredPromotions(ctx)
+}
+
 func (r *repo) AdminUpdateTag(ctx context.Context, id uuid.UUID, tag *string) (*models.User, error) {
 	q := repository.Queries(ctx, r.q)
 
@@ -229,6 +235,35 @@ func (r *repo) AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.U
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errorz.ErrUserNotFound
 		}
+		return nil, err
+	}
+
+	return toModelUser(u), nil
+}
+
+func (r *repo) SetVipCooldown(ctx context.Context, id uuid.UUID, cooldownUntil time.Time, remainingSeconds int32) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	u, err := q.SetVipCooldown(ctx, storage.SetVipCooldownParams{
+		ID:                 id,
+		VipCooldownUntil:   pgtype.Timestamptz{Time: cooldownUntil, Valid: true},
+		VipRemainingSeconds: remainingSeconds,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toModelUser(u), nil
+}
+
+func (r *repo) UpdateVipBudget(ctx context.Context, id uuid.UUID, remainingSeconds int32) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	u, err := q.UpdateVipBudget(ctx, storage.UpdateVipBudgetParams{
+		ID:                 id,
+		VipRemainingSeconds: remainingSeconds,
+	})
+	if err != nil {
 		return nil, err
 	}
 

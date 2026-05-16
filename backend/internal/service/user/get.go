@@ -52,3 +52,7 @@ func (s *service) GetByID(ctx context.Context, id uuid.UUID) (*models.User, erro
 func (s *service) GetByUsername(ctx context.Context, username string) (*models.User, error) {
 	return s.repo.GetByUsername(ctx, username)
 }
+
+func (s *service) ListVIPUsers(ctx context.Context) ([]*models.User, error) {
+	return s.repo.ListVIPUsers(ctx)
+}

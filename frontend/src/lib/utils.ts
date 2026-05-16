@@ -199,3 +199,13 @@ export function streakTierBorderClass(key: string | undefined | null): string {
   const tier = getStreakTier(key)
   return tier ? `border-l-2 ${tier.borderClass}` : ''
 }
+
+export function formatRemainingTime(seconds: number): string {
+  if (seconds <= 0) return ''
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  
+  if (h > 0) return `${h}ч ${m}м`
+  return `${m}:${s.toString().padStart(2, '0')}`
+}

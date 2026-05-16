@@ -19,6 +19,9 @@ export interface User {
   captcha_cooldown_until?: string | null
   promoted_until?: string | null
   promotion_message?: string | null
+  promotion_bid?: number | null
+  vip_remaining_seconds?: number
+  vip_cooldown_until?: string | null
   balance?: number
 }
 

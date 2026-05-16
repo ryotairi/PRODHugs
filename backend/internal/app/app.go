@@ -150,6 +150,9 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	userService.SetAnnouncementRemovedCallback(func(id uuid.UUID) {
 		a.hub.Broadcast("announcement_removed", map[string]string{"id": id.String()})
 	})
+	userService.SetPromotionUpdatedCallback(func() {
+		a.hub.Broadcast("vips_updated", nil)
+	})
 
 	// Handlers
 	userHandler := userhandler.New(userService, jwtManager, a.cfg.JWT.CookieSecure)
@@ -215,6 +218,22 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 			case <-ticker.C:
 				if err := hugService.ApplyIntimacyDecay(jobCtx); err != nil {
 					a.l.Error("failed to apply intimacy decay", "error", err)
+				}
+			}
+		}
+	}()
+
+	// Clear expired VIP promotions every minute.
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-jobCtx.Done():
+				return
+			case <-ticker.C:
+				if _, err := userService.ClearExpiredPromotions(jobCtx); err != nil {
+					a.l.Error("failed to clear expired promotions", "error", err)
 				}
 			}
 		}

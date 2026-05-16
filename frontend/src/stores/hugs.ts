@@ -207,6 +207,7 @@ export const useHugsStore = defineStore('hugs', () => {
   const feed = ref<HugFeedItem[]>([])
   const leaderboard = ref<LeaderboardEntry[]>([])
   const history = ref<HugFeedItem[]>([])
+  const vips = ref<any[]>([])
   const loading = ref(false)
   const feedLoading = ref(false)
   const leaderboardLoading = ref(false)
@@ -389,6 +390,12 @@ export const useHugsStore = defineStore('hugs', () => {
     return res.data || []
   }
 
+  async function fetchVIPs() {
+    const res = await usersApi.getVIPs()
+    vips.value = res.data || []
+    return vips.value
+  }
+
   async function getUserProfile(userId: string): Promise<UserProfile> {
     const res = await usersApi.getProfile(userId)
     return res.data
@@ -447,6 +454,7 @@ export const useHugsStore = defineStore('hugs', () => {
     outgoingHugs,
     slotInfo,
     inboxCount,
+    vips,
     cooldownRefreshes,
     triggerCooldownRefresh,
     fetchBalance,
@@ -468,6 +476,7 @@ export const useHugsStore = defineStore('hugs', () => {
     getHugHistory,
     getHugActivity,
     searchUsers,
+    fetchVIPs,
     getUserProfile,
     blockUser,
     unblockUser,
