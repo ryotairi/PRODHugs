@@ -82,11 +82,7 @@ const isMeInTop3 = computed(() => {
 const isMeOutbid = computed(() => {
   // Don't show "outbid" status while VIPs are loading to prevent flickering
   if (loadingVips.value) return false
-  return isMePromoted.value && !isMeInTop3.value && auth.user?.is_recently_active
-})
-
-const isMeInactiveVIP = computed(() => {
-  return isMePromoted.value && !auth.user?.is_recently_active
+  return isMePromoted.value && !isMeInTop3.value
 })
 
 // Store the timestamp when my budget was last updated
@@ -231,21 +227,16 @@ onUnmounted(() => {
       :class="{
         'border-prod-yellow/30 bg-prod-yellow/5': isMeInTop3,
         'border-destructive/30 bg-destructive/5': isMeOutbid,
-        'border-orange-500/30 bg-orange-500/5': isMeInactiveVIP,
         'border-blue-500/30 bg-blue-500/5': isMeOnCooldown,
         'border-muted bg-muted/5': !isMePromoted && !isMeOnCooldown
       }"
     >
       <div class="space-y-1 flex-1">
-        <h3 class="text-sm font-semibold flex items-center gap-2 flex-wrap" :class="isMeInTop3 ? 'text-prod-yellow' : isMeOutbid ? 'text-destructive' : isMeInactiveVIP ? 'text-orange-400' : isMeOnCooldown ? 'text-blue-400' : ''">
+        <h3 class="text-sm font-semibold flex items-center gap-2 flex-wrap" :class="isMeInTop3 ? 'text-prod-yellow' : isMeOutbid ? 'text-destructive' : isMeOnCooldown ? 'text-blue-400' : ''">
           <div class="flex items-center gap-1.5">
             <template v-if="isMeOnCooldown">
               <TimerIcon class="size-4" />
               <span>Ты устал</span>
-            </template>
-            <template v-else-if="isMeInactiveVIP">
-              <Zap class="size-4" />
-              <span>Ты затаился</span>
             </template>
             <template v-else>
               <Star class="size-4" :class="isMeInTop3 ? 'fill-prod-yellow text-prod-yellow' : ''" />
@@ -264,9 +255,6 @@ onUnmounted(() => {
           <template v-if="isMeOnCooldown">
             Твой 24-часовой VIP-лимит исчерпан. Подожди 6 часов перед следующей ставкой.
           </template>
-          <template v-else-if="isMeInactiveVIP">
-            Твой VIP-статус активен, но тебя не видно в ТОПе, потому что ты давно не обнимался. Обними кого-нибудь, чтобы вернуться!
-          </template>
           <template v-else>
             {{ isMeInTop3 ? 'Ты занимаешь VIP-место. Повысь ставку, чтобы подняться ещё выше.' : isMeOutbid ? 'Тебя вытеснили из Топ-3. Подними ставку, чтобы вернуться!' : 'Займи VIP-место, чтобы тебя видели первым!' }}
           </template>
@@ -277,10 +265,10 @@ onUnmounted(() => {
         size="sm" 
         class="shrink-0" 
         :disabled="isMeOnCooldown"
-        :class="isMeInTop3 ? 'border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black' : isMeOutbid ? 'border-destructive text-destructive hover:bg-destructive hover:text-white' : isMeInactiveVIP ? 'border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white' : isMeOnCooldown ? 'border-blue-500/50 text-blue-400' : 'border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black'" 
+        :class="isMeInTop3 ? 'border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black' : isMeOutbid ? 'border-destructive text-destructive hover:bg-destructive hover:text-white' : isMeOnCooldown ? 'border-blue-500/50 text-blue-400' : 'border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black'" 
         @click="promotionOpen = true"
       >
-        {{ isMeOnCooldown ? 'Отдых' : isMeInTop3 ? 'Повысить' : isMeInactiveVIP ? 'В игру!' : isMeOutbid ? 'Вернуть место' : 'Занять место' }}
+        {{ isMeOnCooldown ? 'Отдых' : isMeInTop3 ? 'Повысить' : isMeOutbid ? 'Вернуть место' : 'Занять место' }}
       </Button>
     </div>
 
