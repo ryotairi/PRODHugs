@@ -6,17 +6,41 @@ VALUES (
 RETURNING *;
 
 -- name: GetUserByUsername :one
-SELECT *
-FROM users
-WHERE username = $1;
+SELECT 
+    u.*, 
+    COALESCE(b.amount, 0)::int AS balance,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ), -1)::float AS avg_response_time
+FROM users u
+LEFT JOIN balances b ON b.user_id = u.id
+WHERE u.username = $1;
 
 -- name: GetUserByID :one
-SELECT *
-FROM users
-WHERE id = $1;
+SELECT 
+    u.*, 
+    COALESCE(b.amount, 0)::int AS balance,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ), -1)::float AS avg_response_time
+FROM users u
+LEFT JOIN balances b ON b.user_id = u.id
+WHERE u.id = $1;
 
 -- name: SearchUsers :many
-SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag
+SELECT 
+    u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
+    (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
+    u.promoted_until, u.promotion_message, u.promotion_bid,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
     SELECT MAX(created_at) AS last_visit
@@ -30,11 +54,27 @@ WHERE (u.username ILIKE '%' || @query::text || '%' OR u.display_name ILIKE '%' |
     UNION
     SELECT blocker_id FROM user_blocks WHERE blocked_id = @viewer_id::uuid
   )
-ORDER BY COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
+ORDER BY 
+    (u.promoted_until > NOW()) DESC,
+    u.promotion_bid DESC,
+    (
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ) ASC NULLS LAST,
+    COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
 
 -- name: ListAllUsers :many
-SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag
+SELECT 
+    u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
+    (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
+    u.promoted_until, u.promotion_message, u.promotion_bid,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
     SELECT MAX(created_at) AS last_visit
@@ -47,7 +87,15 @@ WHERE u.banned_at IS NULL
     UNION
     SELECT blocker_id FROM user_blocks WHERE blocked_id = @viewer_id::uuid
   )
-ORDER BY COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
+ORDER BY 
+    (u.promoted_until > NOW()) DESC,
+    u.promotion_bid DESC,
+    (
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ) ASC NULLS LAST,
+    COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
 
 -- name: GetLeaderboard :many
@@ -130,7 +178,17 @@ SELECT EXISTS(
 ) AS taken;
 
 -- name: GetUserByTelegramID :one
-SELECT * FROM users WHERE telegram_id = $1;
+SELECT 
+    u.*, 
+    COALESCE(b.amount, 0)::int AS balance,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM hugs h
+        WHERE h.receiver_id = u.id AND h.status = 'completed'
+    ), -1)::float AS avg_response_time
+FROM users u
+LEFT JOIN balances b ON b.user_id = u.id
+WHERE u.telegram_id = $1;
 
 -- name: UpdateUserPassword :exec
 UPDATE users
@@ -157,6 +215,7 @@ SELECT COUNT(*) FROM users WHERE banned_at IS NOT NULL;
 
 -- name: ListUsersAdmin :many
 SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.captcha_type, u.captcha_cooldown_until,
+       u.promoted_until, u.promotion_message, u.promotion_bid,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -171,6 +230,7 @@ LIMIT @lim::int OFFSET @off::int;
 
 -- name: SearchUsersAdmin :many
 SELECT u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag, u.banned_at, u.created_at, u.captcha_type, u.captcha_cooldown_until,
+       u.promoted_until, u.promotion_message, u.promotion_bid,
        COALESCE(b.amount, 0)::int AS balance,
        COALESCE(rt.last_visit, u.created_at)::timestamptz AS last_visit_at
 FROM users u
@@ -242,3 +302,15 @@ WHERE id = $1;
 -- name: AdminDeleteUser :execrows
 DELETE FROM users
 WHERE id = $1 AND role != 'admin';
+
+-- name: AdminClearPromotion :one
+UPDATE users
+SET promoted_until = NULL, promotion_message = NULL, promotion_bid = 0
+WHERE id = $1
+RETURNING *;
+
+-- name: PromoteUser :one
+UPDATE users
+SET promoted_until = $2, promotion_message = $3, promotion_bid = $4
+WHERE id = $1
+RETURNING *;

@@ -107,3 +107,22 @@ func (h *UserHandler) ChangePassword(ctx context.Context, req v1.ChangePasswordR
 		Message: "password changed successfully",
 	}, nil
 }
+
+func (h *UserHandler) PromoteUser(ctx context.Context, req v1.PromoteUserRequestObject) (v1.PromoteUserResponseObject, error) {
+	userID := ctx.Value(middleware.UserIDContextKey).(uuid.UUID)
+
+	u, err := h.svc.PromoteUser(ctx, userID, int32(req.Body.Bid), req.Body.Message)
+	if err != nil {
+		if errors.Is(err, errorz.ErrInsufficientBalance) {
+			return v1.PromoteUser400JSONResponse{
+				BadRequestJSONResponse: v1.BadRequestJSONResponse{
+					Code:    v1.INSUFFICIENTBALANCE,
+					Message: "Недостаточно монет",
+				},
+			}, nil
+		}
+		return nil, err
+	}
+
+	return v1.PromoteUser200JSONResponse(toV1UserListItem(u)), nil
+}

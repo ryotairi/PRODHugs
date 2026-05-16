@@ -15,9 +15,9 @@ type CreateUser struct {
 }
 
 type User struct {
-	ID             uuid.UUID
-	Username       string
-	Role           string
+	ID                   uuid.UUID
+	Username             string
+	Role                 string
 	HashedPassword string
 	Gender         *string
 	DisplayName    *string
@@ -28,6 +28,12 @@ type User struct {
 	CreatedAt            *time.Time
 	CaptchaType          string
 	CaptchaCooldownUntil *time.Time
+	PromotedUntil        *time.Time
+	PromotionMessage     *string
+	PromotionBid         int32
+	IsTelegramLinked     bool
+	AvgResponseTime      *float64
+	Balance              int32
 }
 
 type AdminUser struct {
@@ -44,6 +50,9 @@ type AdminUser struct {
 	LastVisitAt          *time.Time // proxy for last user visit via refresh token
 	CaptchaType          string
 	CaptchaCooldownUntil *time.Time
+	PromotedUntil        *time.Time
+	PromotionMessage     *string
+	PromotionBid         int32
 }
 
 type AdminStats struct {
@@ -59,4 +68,10 @@ type BlockedUser struct {
 	Tag         *string
 	SpecialTag  *string
 	CreatedAt   time.Time
+}
+
+// PromotionCost returns the cost to promote a user for a given duration in hours.
+func PromotionCost(hours int32) int32 {
+	// 5 coins per hour
+	return hours * 5
 }

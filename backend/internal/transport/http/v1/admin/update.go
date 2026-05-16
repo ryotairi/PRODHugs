@@ -93,3 +93,20 @@ func (h *AdminHandler) AdminUpdateCaptchaType(ctx context.Context, req v1.AdminU
 
 	return v1.AdminUpdateCaptchaType200JSONResponse(toV1AdminUser(u)), nil
 }
+
+func (h *AdminHandler) AdminClearPromotion(ctx context.Context, req v1.AdminClearPromotionRequestObject) (v1.AdminClearPromotionResponseObject, error) {
+	u, err := h.svc.AdminClearPromotion(ctx, req.UserId)
+	if err != nil {
+		if errors.Is(err, errorz.ErrUserNotFound) {
+			return v1.AdminClearPromotion404JSONResponse{
+				NotFoundJSONResponse: v1.NotFoundJSONResponse{
+					Message: "user not found",
+					Code:    v1.USERNOTFOUND,
+				},
+			}, nil
+		}
+		return nil, err
+	}
+
+	return v1.AdminClearPromotion200JSONResponse(toV1User(u)), nil
+}

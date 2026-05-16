@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go-service-template/internal/errorz"
 	"go-service-template/internal/models"
@@ -108,4 +109,26 @@ func (s *service) RevokeRefreshToken(ctx context.Context, jti string) error {
 
 func (s *service) RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
 	return s.refreshTokenRepo.RevokeAllUserRefreshTokens(ctx, userID)
+}
+
+func (s *service) PromoteUser(ctx context.Context, id uuid.UUID, bid int32, message *string) (*models.User, error) {
+	// Promotion lasts for 24 hours
+	promotedUntil := time.Now().Add(24 * time.Hour)
+
+	var result *models.User
+	err := s.tx.RunInTx(ctx, func(txCtx context.Context) error {
+		bal, err := s.balanceRepo.DeductBalance(txCtx, id, bid)
+		if err != nil {
+			return err
+		}
+		if bal == nil {
+			return errorz.ErrInsufficientBalance
+		}
+		result, err = s.repo.PromoteUser(txCtx, id, promotedUntil, message, bid)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

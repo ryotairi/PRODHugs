@@ -17,6 +17,8 @@ export interface AdminUser {
   balance: number
   captcha_type: 'none' | 'sudoku' | 'casino'
   captcha_cooldown_until?: string | null
+  promoted_until?: string | null
+  promotion_message?: string | null
 }
 
 export interface AdminStats {
@@ -133,6 +135,14 @@ export const useAdminStore = defineStore('admin', () => {
     return updated
   }
 
+  async function clearPromotion(userId: string) {
+    const res = await adminApi.clearPromotion(userId)
+    const updated: AdminUser = res.data
+    const idx = users.value.findIndex((u) => u.id === userId)
+    if (idx !== -1) users.value[idx] = updated
+    return updated
+  }
+
   async function updatePassword(userId: string, password: string) {
     await adminApi.updatePassword(userId, password)
   }
@@ -168,6 +178,7 @@ export const useAdminStore = defineStore('admin', () => {
     updateTag,
     updateSpecialTag,
     updateCaptchaType,
+    clearPromotion,
     updatePassword,
     updateBalance,
     deleteUser,

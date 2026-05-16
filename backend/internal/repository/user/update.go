@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"time"
+
 	"go-service-template/internal/db/sqlc/storage"
 	"go-service-template/internal/models"
 	"go-service-template/internal/repository"
@@ -94,4 +96,25 @@ func (r *repo) UpdatePassword(ctx context.Context, id uuid.UUID, hashedPassword 
 		ID:       id,
 		Password: hashedPassword,
 	})
+}
+
+func (r *repo) PromoteUser(ctx context.Context, id uuid.UUID, promotedUntil time.Time, message *string, bid int32) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	var msg pgtype.Text
+	if message != nil {
+		msg = pgtype.Text{String: *message, Valid: true}
+	}
+
+	u, err := q.PromoteUser(ctx, storage.PromoteUserParams{
+		ID:            id,
+		PromotedUntil: pgtype.Timestamptz{Time: promotedUntil, Valid: true},
+		PromotionMessage: msg,
+		PromotionBid:  bid,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toModelUser(u), nil
 }

@@ -35,6 +35,8 @@ type repo interface {
 	SearchUsersAdmin(ctx context.Context, query string, limit, offset int32) ([]*models.AdminUser, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
 	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
+	AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error)
+	PromoteUser(ctx context.Context, id uuid.UUID, promotedUntil time.Time, message *string, bid int32) (*models.User, error)
 	
 	CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt time.Time) (storage.SudokuCaptcha, error)
 	GetSudokuCaptcha(ctx context.Context, id uuid.UUID) (storage.SudokuCaptcha, error)

@@ -17,6 +17,9 @@ export interface User {
   telegram_id?: number | null
   captcha_type: 'none' | 'sudoku' | 'casino'
   captcha_cooldown_until?: string | null
+  promoted_until?: string | null
+  promotion_message?: string | null
+  balance?: number
 }
 
 export const useAuthStore = defineStore('auth', () => {

@@ -22,6 +22,7 @@ type service interface {
 	AdminUpdateTag(ctx context.Context, id uuid.UUID, tag *string) (*models.User, error)
 	AdminUpdateSpecialTag(ctx context.Context, id uuid.UUID, specialTag *string) (*models.User, error)
 	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
+	AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
 	CreateAnnouncement(ctx context.Context, adminID uuid.UUID, message string) (*models.Announcement, error)
 	DeactivateAnnouncement(ctx context.Context, id uuid.UUID) error
@@ -35,17 +36,48 @@ func New(svc service) *AdminHandler {
 	return &AdminHandler{svc: svc}
 }
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
+func toV1User(u *models.User) v1.User {
+	bal := int(u.Balance)
+	user := v1.User{
+		Id:                   u.ID,
+		Username:             u.Username,
+		Role:                 v1.UserRole(u.Role),
+		DisplayName:          u.DisplayName,
+		Tag:                  u.Tag,
+		SpecialTag:           u.SpecialTag,
+		TelegramId:           u.TelegramID,
+		CaptchaType:          v1.CaptchaType(u.CaptchaType),
+		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
+		PromotedUntil:        u.PromotedUntil,
+		PromotionMessage:     u.PromotionMessage,
+		PromotionBid:         ptr(int(u.PromotionBid)),
+		Balance:              &bal,
+	}
+	if u.Gender != nil {
+		g := v1.Gender(*u.Gender)
+		user.Gender = &g
+	}
+	return user
+}
+
 func toV1AdminUser(u *models.User) v1.AdminUser {
 	au := v1.AdminUser{
 		Id:                   u.ID,
 		Username:             u.Username,
 		Role:                 v1.AdminUserRole(u.Role),
-		Balance:              0, // Not available from User model; frontend updates locally
+		Balance:              int(u.Balance),
 		DisplayName:          u.DisplayName,
 		Tag:                  u.Tag,
 		SpecialTag:           u.SpecialTag,
 		CaptchaType:          v1.CaptchaType(u.CaptchaType),
 		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
+		PromotedUntil:        u.PromotedUntil,
+		PromotionMessage:     u.PromotionMessage,
+		PromotionBid:         ptr(int(u.PromotionBid)),
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)
@@ -70,6 +102,9 @@ func toV1AdminUserFromAdmin(u *models.AdminUser) v1.AdminUser {
 		LastVisitAt:          u.LastVisitAt,
 		CaptchaType:          v1.CaptchaType(u.CaptchaType),
 		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
+		PromotedUntil:        u.PromotedUntil,
+		PromotionMessage:     u.PromotionMessage,
+		PromotionBid:         ptr(int(u.PromotionBid)),
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)

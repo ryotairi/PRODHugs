@@ -23,7 +23,7 @@ func (r *repo) GetByUsername(ctx context.Context, username string) (*models.User
 		return nil, err
 	}
 
-	return toModelUser(u), nil
+	return toModelUserFromByUsername(u), nil
 }
 
 func (r *repo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
@@ -37,7 +37,7 @@ func (r *repo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) 
 		return nil, err
 	}
 
-	return toModelUser(u), nil
+	return toModelUserFromByID(u), nil
 }
 
 func (r *repo) GetByTelegramID(ctx context.Context, telegramID int64) (*models.User, error) {
@@ -51,5 +51,5 @@ func (r *repo) GetByTelegramID(ctx context.Context, telegramID int64) (*models.U
 		return nil, err
 	}
 
-	return toModelUser(u), nil
+	return toModelUserFromByTelegramID(u), nil
 }

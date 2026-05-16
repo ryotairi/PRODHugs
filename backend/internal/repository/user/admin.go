@@ -220,3 +220,17 @@ func (r *repo) AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captcha
 
 	return toModelUser(u), nil
 }
+
+func (r *repo) AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	q := repository.Queries(ctx, r.q)
+
+	u, err := q.AdminClearPromotion(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errorz.ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return toModelUser(u), nil
+}

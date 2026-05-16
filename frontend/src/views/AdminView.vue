@@ -17,6 +17,7 @@ import {
   Radio,
   Megaphone,
   Puzzle,
+  Star,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { announcementsApi, adminApi } from '@/api/client'
@@ -405,6 +406,15 @@ async function saveSpecialTag() {
   }
 }
 
+async function handleClearPromotion(user: AdminUser) {
+  try {
+    await admin.clearPromotion(user.id)
+    toast.success(`Продвижение для ${user.username} удалено`)
+  } catch {
+    toast.error('Ошибка при удалении продвижения')
+  }
+}
+
 // ── Ban / Unban ──
 async function toggleBan(user: AdminUser) {
   try {
@@ -611,6 +621,10 @@ function formatDate(dateStr: string): string {
                   Бан
                 </Badge>
                 <UserTag :tag="user.tag" size="md" />
+                <Star
+                  v-if="user.promoted_until && new Date(user.promoted_until) > new Date()"
+                  class="size-3 text-prod-yellow fill-prod-yellow"
+                />
                 <span
                   v-if="user.special_tag"
                   class="text-[10px] text-prod-yellow"
@@ -676,6 +690,14 @@ function formatDate(dateStr: string): string {
               <DropdownMenuItem @click="openSpecialTagDialog(user)">
                 <Tag class="size-4" />
                 Спецтег
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                v-if="user.promoted_until && new Date(user.promoted_until) > new Date()"
+                class="text-prod-yellow"
+                @click="handleClearPromotion(user)"
+              >
+                <Star class="size-4 fill-prod-yellow" />
+                Убрать из топа
               </DropdownMenuItem>
               <DropdownMenuItem @click="openCaptchaTypeDialog(user)">
                 <Puzzle class="size-4" />

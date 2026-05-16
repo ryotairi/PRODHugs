@@ -172,14 +172,33 @@ func toModelUserListItem(row storage.SearchUsersRow) *models.User {
 	if row.SpecialTag.Valid {
 		specialTag = &row.SpecialTag.String
 	}
+	var promotedUntil *time.Time
+	if row.PromotedUntil.Valid {
+		promotedUntil = &row.PromotedUntil.Time
+	}
+	var promotionMessage *string
+	if row.PromotionMessage.Valid {
+		promotionMessage = &row.PromotionMessage.String
+	}
+
+	var avgResponseTime *float64
+	if row.AvgResponseTime >= 0 {
+		avgResponseTime = &row.AvgResponseTime
+	}
+
 	return &models.User{
-		ID:          row.ID,
-		Username:    row.Username,
-		Role:        row.Role,
-		Gender:      gender,
-		DisplayName: displayName,
-		Tag:         tag,
-		SpecialTag:  specialTag,
+		ID:               row.ID,
+		Username:         row.Username,
+		Role:             row.Role,
+		Gender:           gender,
+		DisplayName:      displayName,
+		Tag:              tag,
+		SpecialTag:       specialTag,
+		IsTelegramLinked: row.IsTelegramLinked,
+		PromotedUntil:    promotedUntil,
+		PromotionMessage: promotionMessage,
+		PromotionBid:     row.PromotionBid,
+		AvgResponseTime:  avgResponseTime,
 	}
 }
 
@@ -200,14 +219,33 @@ func toModelUserListItemFromAll(row storage.ListAllUsersRow) *models.User {
 	if row.SpecialTag.Valid {
 		specialTag = &row.SpecialTag.String
 	}
+	var promotedUntil *time.Time
+	if row.PromotedUntil.Valid {
+		promotedUntil = &row.PromotedUntil.Time
+	}
+	var promotionMessage *string
+	if row.PromotionMessage.Valid {
+		promotionMessage = &row.PromotionMessage.String
+	}
+
+	var avgResponseTime *float64
+	if row.AvgResponseTime >= 0 {
+		avgResponseTime = &row.AvgResponseTime
+	}
+
 	return &models.User{
-		ID:          row.ID,
-		Username:    row.Username,
-		Role:        row.Role,
-		Gender:      gender,
-		DisplayName: displayName,
-		Tag:         tag,
-		SpecialTag:  specialTag,
+		ID:               row.ID,
+		Username:         row.Username,
+		Role:             row.Role,
+		Gender:           gender,
+		DisplayName:      displayName,
+		Tag:              tag,
+		SpecialTag:       specialTag,
+		IsTelegramLinked: row.IsTelegramLinked,
+		PromotedUntil:    promotedUntil,
+		PromotionMessage: promotionMessage,
+		PromotionBid:     row.PromotionBid,
+		AvgResponseTime:  avgResponseTime,
 	}
 }
 

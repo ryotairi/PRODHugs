@@ -25,6 +25,7 @@ type service interface {
 	IsRefreshTokenActive(ctx context.Context, jti string) (bool, error)
 	RevokeRefreshToken(ctx context.Context, jti string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	PromoteUser(ctx context.Context, id uuid.UUID, durationHours int32, message *string) (*models.User, error)
 	GenerateSudokuCaptcha(ctx context.Context, userID uuid.UUID) (uuid.UUID, [][]int, error)
 	VerifySudokuCell(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID, row, col, value int) (*userService.CaptchaResult, error)
 	CompleteSudoku(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID) (string, error)
@@ -51,7 +52,12 @@ func (h *UserHandler) SetTelegramLoginStore(store *telegram.LoginStore, botUsern
 	h.botUsername = botUsername
 }
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func toV1User(u *models.User) v1.User {
+	bal := int(u.Balance)
 	user := v1.User{
 		Id:                   u.ID,
 		Username:             u.Username,
@@ -62,10 +68,41 @@ func toV1User(u *models.User) v1.User {
 		TelegramId:           u.TelegramID,
 		CaptchaType:          v1.CaptchaType(u.CaptchaType),
 		CaptchaCooldownUntil: u.CaptchaCooldownUntil,
+		PromotedUntil:        u.PromotedUntil,
+		PromotionMessage:     u.PromotionMessage,
+		PromotionBid:         ptr(int(u.PromotionBid)),
+		Balance:              &bal,
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)
 		user.Gender = &g
 	}
 	return user
+}
+
+func toV1UserListItem(u *models.User) v1.UserListItem {
+	var avgResponseTime *float32
+	if u.AvgResponseTime != nil {
+		val := float32(*u.AvgResponseTime)
+		avgResponseTime = &val
+	}
+
+	item := v1.UserListItem{
+		Id:               u.ID,
+		Username:         u.Username,
+		Role:             u.Role,
+		DisplayName:      u.DisplayName,
+		Tag:              u.Tag,
+		SpecialTag:       u.SpecialTag,
+		IsTelegramLinked: u.IsTelegramLinked,
+		AvgResponseTime:  avgResponseTime,
+		PromotedUntil:    u.PromotedUntil,
+		PromotionMessage: u.PromotionMessage,
+		PromotionBid:     ptr(int(u.PromotionBid)),
+	}
+	if u.Gender != nil {
+		g := v1.Gender(*u.Gender)
+		item.Gender = &g
+	}
+	return item
 }

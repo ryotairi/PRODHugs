@@ -101,6 +101,19 @@ components:
           type: string
           format: date-time
           nullable: true
+        promoted_until:
+          type: string
+          format: date-time
+          nullable: true
+        promotion_message:
+          type: string
+          nullable: true
+        promotion_bid:
+          type: integer
+          description: Current bid for this promotion spot
+        balance:
+          type: integer
+          description: User's current balance (returned for /users/me or own profile)
 
     AuthResponse:
       type: object
@@ -357,6 +370,7 @@ components:
         - id
         - username
         - role
+        - is_telegram_linked
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -372,6 +386,35 @@ components:
         special_tag:
           type: string
           nullable: true
+        is_telegram_linked: { type: boolean }
+        avg_response_time:
+          type: number
+          nullable: true
+          description: Average response time in seconds
+        promoted_until:
+          type: string
+          format: date-time
+          nullable: true
+        promotion_message:
+          type: string
+          nullable: true
+        promotion_bid:
+          type: integer
+          description: Current bid for this promotion spot
+
+    PromoteUserRequest:
+      type: object
+      required:
+        - bid
+      properties:
+        bid:
+          type: integer
+          minimum: 1
+          description: Amount of coins to bid for a spot
+        message:
+          type: string
+          maxLength: 100
+          description: Optional promotion message
 
     HugActivityItem:
       type: object
@@ -559,6 +602,16 @@ components:
           type: string
           format: date-time
           nullable: true
+        promoted_until:
+          type: string
+          format: date-time
+          nullable: true
+        promotion_message:
+          type: string
+          nullable: true
+        promotion_bid:
+          type: integer
+          description: Current bid for this promotion spot
 
     AdminStats:
       type: object
@@ -1319,6 +1372,30 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /users/promote:
+    post:
+      summary: Promote current user by spending balance
+      operationId: promoteUser
+      security:
+        - BearerAuth: ["user", "admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoteUserRequest'
+      responses:
+        '200':
+          description: User promoted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /users/{userId}/profile:
     get:
       summary: Get user profile with stats
@@ -1936,6 +2013,33 @@ paths:
                   message: { type: string }
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /admin/users/{userId}/promotion:
+    delete:
+      summary: Clear user promotion
+      operationId: adminClearPromotion
+      security:
+        - BearerAuth: ["admin"]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Promotion cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /admin/announcements:
     post:

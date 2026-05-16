@@ -82,3 +82,7 @@ func (s *service) AdminUpdateBalance(ctx context.Context, id uuid.UUID, amount i
 func (s *service) AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error) {
 	return s.repo.AdminUpdateCaptchaType(ctx, id, captchaType)
 }
+
+func (s *service) AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	return s.repo.AdminClearPromotion(ctx, id)
+}

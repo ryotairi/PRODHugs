@@ -24,6 +24,7 @@ const props = defineProps<ToasterProps & { class?: string }>()
       '--normal-text': 'var(--popover-foreground)',
       '--normal-border': 'var(--border)',
       '--border-radius': 'var(--radius)',
+      '--description-color': 'var(--muted-foreground)',
     }"
     :toast-options="{
       classes: {
