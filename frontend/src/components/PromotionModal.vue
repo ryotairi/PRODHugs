@@ -119,6 +119,10 @@ async function handlePromote() {
         </div>
 
         <div class="rounded-lg bg-muted p-3 space-y-2">
+          <div v-if="auth.user?.promotion_bid && cost > 0" class="flex items-center justify-between text-sm">
+            <span class="text-muted-foreground">Твоя текущая ставка:</span>
+            <span class="font-bold text-muted-foreground">{{ auth.user.promotion_bid }} монет</span>
+          </div>
           <div class="flex items-center justify-between text-sm">
             <span class="text-muted-foreground">К оплате:</span>
             <span class="font-bold text-prod-yellow">{{ cost }} монет</span>
