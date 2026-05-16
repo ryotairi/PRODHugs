@@ -66,7 +66,10 @@ const formatResponseTime = (seconds: number) => {
     class="flex items-center justify-between rounded-[10px] border p-3 transition-colors hover:bg-[#002D20]"
     :class="{ 'border-prod-yellow/50 bg-prod-yellow/5': isVip }"
   >
-    <RouterLink :to="`/user/${user.id}`" class="flex items-center gap-3 flex-1 min-w-0">
+    <RouterLink
+      :to="user.username ? `/user/@${user.username}` : `/user/${user.id}`"
+      class="flex items-center gap-3 flex-1 min-w-0"
+    >
       <div class="shrink-0 grid grid-cols-1 grid-rows-1 items-end justify-items-end">
         <Avatar class="size-9 col-start-1 row-start-1" :class="{ 'ring-2 ring-prod-yellow ring-offset-2 ring-offset-background': isVip }">
           <AvatarFallback class="text-xs">
