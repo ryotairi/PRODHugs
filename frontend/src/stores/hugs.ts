@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { hugsApi, balanceApi, leaderboardApi, usersApi, intimacyApi, streaksApi } from '@/api/client'
+import {
+  hugsApi,
+  balanceApi,
+  balanceApiV2,
+  leaderboardApi,
+  usersApi,
+  usersApiV2,
+  intimacyApi,
+  streaksApi,
+} from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
 export type HugType = 'standard' | 'bear' | 'group' | 'warm' | 'soul'
@@ -166,6 +175,13 @@ export interface DailyRewardResponse {
   streak_days: number
   new_balance: number
   already_claimed?: boolean
+}
+
+export interface DailyRewardStatus {
+  can_claim: boolean
+  next_claim_at: string
+  streak_days: number
+  last_claimed_at?: string | null
 }
 
 export interface StreakInfo {
@@ -386,7 +402,8 @@ export const useHugsStore = defineStore('hugs', () => {
   }
 
   async function searchUsers(q = '', limit = 20, offset = 0) {
-    const res = await usersApi.search(q, limit, offset)
+    // v2 understands the "@username" prefix; v1 stays as legacy.
+    const res = await usersApiV2.search(q, limit, offset)
     return res.data || []
   }
 
@@ -397,7 +414,13 @@ export const useHugsStore = defineStore('hugs', () => {
   }
 
   async function getUserProfile(userId: string): Promise<UserProfile> {
-    const res = await usersApi.getProfile(userId)
+    // v2 accepts a UUID or a username (with or without a leading "@").
+    const res = await usersApiV2.getProfile(userId)
+    return res.data
+  }
+
+  async function getDailyRewardStatus(): Promise<DailyRewardStatus> {
+    const res = await balanceApiV2.getDailyRewardStatus()
     return res.data
   }
 
@@ -478,6 +501,7 @@ export const useHugsStore = defineStore('hugs', () => {
     searchUsers,
     fetchVIPs,
     getUserProfile,
+    getDailyRewardStatus,
     blockUser,
     unblockUser,
     getBlockedUsers,
