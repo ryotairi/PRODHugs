@@ -105,16 +105,6 @@ async function handlePromote() {
           <p class="text-[10px] text-muted-foreground">Минимальная ставка: {{ minBid }} монет. Ваша позиция зависит от суммы.</p>
         </div>
 
-        <div class="space-y-2">
-          <Label for="message">Текст в профиле</Label>
-          <Input
-            id="message"
-            v-model="message"
-            placeholder="Например: Спонсорское место"
-            maxlength="100"
-          />
-        </div>
-
         <div class="rounded-lg bg-muted p-3">
           <div class="flex items-center justify-between text-sm">
             <span>Ваш баланс:</span>
