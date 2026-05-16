@@ -10,6 +10,24 @@ const api = axios.create({
   withCredentials: true, // send HttpOnly cookies with every request
 })
 
+// v2 axios instance — shares cookies, JWT, and the silent-refresh interceptor
+// installed below by piggybacking on the same response interceptor.
+const apiV2 = axios.create({
+  baseURL: '/api/v2',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+})
+
+apiV2.interceptors.request.use((config) => {
+  const token = getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
 // ── Request interceptor: attach access token ──
 api.interceptors.request.use((config) => {
   const token = getAccessToken()
@@ -66,29 +84,25 @@ function forceLogout() {
   router.push('/login')
 }
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
+function makeRefreshInterceptor(client: typeof api) {
+  return async (error: AxiosError) => {
     const originalRequest = error.config
 
-    // Only intercept 401s on non-auth endpoints
     if (error.response?.status !== 401 || !originalRequest || isAuthRequest(originalRequest)) {
       return Promise.reject(error)
     }
 
-    // Prevent retrying the same request twice
     if ((originalRequest as InternalAxiosRequestConfig & { _retried?: boolean })._retried) {
       forceLogout()
       return Promise.reject(error)
     }
 
-    // If another refresh is already in-flight, queue this request
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         pendingQueue.push({ resolve, reject })
       }).then((newToken) => {
         originalRequest.headers.Authorization = `Bearer ${newToken}`
-        return api(originalRequest)
+        return client(originalRequest)
       })
     }
 
@@ -96,6 +110,7 @@ api.interceptors.response.use(
     ;(originalRequest as InternalAxiosRequestConfig & { _retried?: boolean })._retried = true
 
     try {
+      // The refresh endpoint lives under /api/v1 — always call it through `api`.
       const res = await api.post('/auth/refresh')
       const newToken: string = res.data.token
 
@@ -103,7 +118,7 @@ api.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${newToken}`
 
       processPendingQueue(newToken, null)
-      return api(originalRequest)
+      return client(originalRequest)
     } catch (refreshError) {
       processPendingQueue(null, refreshError)
       forceLogout()
@@ -111,8 +126,11 @@ api.interceptors.response.use(
     } finally {
       isRefreshing = false
     }
-  },
-)
+  }
+}
+
+api.interceptors.response.use((response) => response, makeRefreshInterceptor(api))
+apiV2.interceptors.response.use((response) => response, makeRefreshInterceptor(apiV2))
 
 export default api
 
@@ -238,6 +256,30 @@ export const adminApi = {
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   createAnnouncement: (message: string) => api.post('/admin/announcements', { message }),
   deleteAnnouncement: (id: string) => api.delete(`/admin/announcements/${id}`),
+}
+
+// ── v2 API (spec at backend/api/openapi-v2.yaml) ──
+// v2 endpoints currently power: profile lookup by username, "@username"
+// search, and read-only daily-reward status. v1 endpoints stay available as
+// legacy.
+
+export const usersApiV2 = {
+  // q can include a leading "@" to filter by username substring only.
+  search: (q = '', limit = 20, offset = 0) =>
+    apiV2.get('/users/search', { params: { q, limit, offset } }),
+  // usernameOrId may be a UUID, a bare username, or "@username".
+  getProfile: (usernameOrId: string) =>
+    apiV2.get(`/users/${encodeURIComponent(usernameOrId)}/profile`),
+}
+
+export const balanceApiV2 = {
+  getDailyRewardStatus: () =>
+    apiV2.get<{
+      can_claim: boolean
+      next_claim_at: string
+      streak_days: number
+      last_claimed_at?: string | null
+    }>('/daily-reward/status'),
 }
 
 // Captcha

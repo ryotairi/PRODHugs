@@ -17,6 +17,7 @@ import (
 	"go-service-template/internal/repository"
 	"go-service-template/internal/transport/http/server"
 	v1 "go-service-template/internal/transport/http/v1"
+	v2 "go-service-template/internal/transport/http/v2"
 	"go-service-template/internal/ws"
 	swaggerui "go-service-template/pkg/swagger-ui"
 
@@ -180,6 +181,20 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	apiGroup.Use(oapiValidationMiddleware)
 
 	v1.RegisterHandlers(apiGroup, strictHandler)
+
+	// v2 API — spec-first like v1: own OpenAPI spec, own codegen-generated
+	// strict server, own validation middleware (same JWT authenticator).
+	v2Group := a.e.Group("/api/v2")
+	v2ValidationMiddleware, err := custommiddleware.OpenAPIV2ValidationMiddleware(jwtManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create v2 OpenAPI validation middleware: %w", err)
+	}
+	v2Group.Use(v2ValidationMiddleware)
+	v2StrictMiddlewares := []v2.StrictMiddlewareFunc{
+		v2.StrictErrorMiddleware,
+	}
+	v2Strict := v2.NewStrictHandler(v2.New(hugService, userService), v2StrictMiddlewares)
+	v2.RegisterHandlers(v2Group, v2Strict)
 
 	// WebSocket endpoint (outside OpenAPI validation)
 	a.e.GET("/api/v1/ws", a.hub.HandleWS)
@@ -391,6 +406,15 @@ func (a *App) initEcho() error {
 		spec, err := v1.GetSwagger()
 		if err != nil {
 			slog.Error("failed to get swagger spec", "error", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, errorz.ErrInternalServerError.Error())
+		}
+		return c.JSON(http.StatusOK, spec)
+	})
+
+	a.e.GET("/api/v2/openapi.json", func(c echo.Context) error {
+		spec, err := v2.GetSwagger()
+		if err != nil {
+			slog.Error("failed to get v2 swagger spec", "error", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, errorz.ErrInternalServerError.Error())
 		}
 		return c.JSON(http.StatusOK, spec)

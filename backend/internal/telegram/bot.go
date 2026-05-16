@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"go-service-template/internal/models"
 
@@ -62,7 +63,15 @@ func NewBot(client *Client, linkStore *LinkStore, userRepo botUserRepo, hugSvc h
 		return b
 	}
 
-	tg, err := tgbot.New(client.token, tgbot.WithDefaultHandler(b.handleUpdate))
+	// The default getMe init timeout (5s) is too aggressive on cold-start /
+	// flaky networks — bump it and don't block app startup on a slow Telegram
+	// response. If getMe still fails the bot stays disabled but the rest of
+	// the service starts.
+	tg, err := tgbot.New(
+		client.token,
+		tgbot.WithDefaultHandler(b.handleUpdate),
+		tgbot.WithCheckInitTimeout(30*time.Second),
+	)
 	if err != nil {
 		logger.Error("telegram bot: failed to create", "error", err)
 		return b

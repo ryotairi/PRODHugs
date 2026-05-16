@@ -322,6 +322,36 @@ func (s *service) ClaimDailyReward(ctx context.Context, userID uuid.UUID) (int32
 	return amount, streakDays, balAmount, alreadyClaimed, nil
 }
 
+// GetDailyRewardStatus returns the current daily-reward status for the user.
+// canClaim is true when the reward has not been claimed today (UTC).
+// nextClaimAt is the next UTC midnight after the last claim (or "now" if can claim).
+// streakDays is the user's current streak; lastClaimedAt is nil if never claimed.
+func (s *service) GetDailyRewardStatus(ctx context.Context, userID uuid.UUID) (bool, time.Time, int32, *time.Time, error) {
+	existing, err := s.dailyRepo.GetDailyReward(ctx, userID)
+	if err != nil {
+		return false, time.Time{}, 0, nil, err
+	}
+
+	now := time.Now().UTC()
+
+	if existing == nil {
+		// Never claimed — can claim now; streak resets to 1 on claim.
+		return true, now, 0, nil, nil
+	}
+
+	lastClaimed := existing.LastClaimedAt.UTC()
+	lastClaimedDay := lastClaimed.Format("2006-01-02")
+	canClaim := lastClaimedDay != models.Today()
+
+	// Next claim is the next UTC midnight after the last claim.
+	nextClaimAt := time.Date(lastClaimed.Year(), lastClaimed.Month(), lastClaimed.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
+	if canClaim {
+		nextClaimAt = now
+	}
+
+	return canClaim, nextClaimAt, existing.StreakDays, &lastClaimed, nil
+}
+
 // GetPairIntimacy returns the intimacy info for a user pair.
 func (s *service) GetPairIntimacy(ctx context.Context, userA, userB uuid.UUID) (*models.IntimacyInfo, error) {
 	pair, err := s.intimacyRepo.GetPairIntimacy(ctx, userA, userB)

@@ -34,6 +34,17 @@ const router = createRouter({
       meta: { auth: true },
     },
     {
+      // Canonical, shareable URL. The literal "@" disambiguates from the
+      // legacy UUID route below; the component reads `route.params.username`
+      // and resolves it via the v2 profile endpoint.
+      path: '/user/@:username',
+      name: 'user-profile-by-username',
+      component: () => import('@/views/UserProfileView.vue'),
+      meta: { auth: true, back: true },
+    },
+    {
+      // Legacy: profile by UUID. The component performs a router.replace to
+      // the @username URL once the profile is loaded.
       path: '/user/:id',
       name: 'user-profile',
       component: () => import('@/views/UserProfileView.vue'),

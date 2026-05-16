@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useTicker } from '@/composables/useTicker'
 import {
   Heart,
   ArrowUp,
@@ -18,9 +19,11 @@ import { useAuthStore } from '@/stores/auth'
 import {
   useHugsStore,
   type DailyRewardResponse,
+  type DailyRewardStatus,
   type UserProfile,
   type TopStreakEntry,
 } from '@/stores/hugs'
+import { formatRemainingTime } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -38,9 +41,42 @@ const hugs = useHugsStore()
 const profile = ref<UserProfile | null>(null)
 const topStreaks = ref<TopStreakEntry[]>([])
 const dailyResult = ref<DailyRewardResponse | null>(null)
+const dailyStatus = ref<DailyRewardStatus | null>(null)
 const claimingDaily = ref(false)
 const loading = ref(true)
 let unmounted = false
+
+const { now: tickerNow } = useTicker()
+
+// Disable the claim button when the backend reports the reward has already
+// been claimed today (returned via /api/v2/daily-reward/status).
+const dailyAlreadyClaimed = computed(() => {
+  if (dailyResult.value?.already_claimed) return true
+  return dailyStatus.value ? !dailyStatus.value.can_claim : false
+})
+
+// Live countdown to the next claim window (next UTC midnight after the last
+// claim). Updates via the global ticker.
+const dailyNextClaimText = computed(() => {
+  if (!dailyAlreadyClaimed.value) return ''
+  const iso = dailyStatus.value?.next_claim_at
+  if (!iso) return ''
+  const diffMs = new Date(iso).getTime() - tickerNow.value
+  const seconds = Math.max(0, Math.floor(diffMs / 1000))
+  return formatRemainingTime(seconds)
+})
+
+const dailyStreakDays = computed(() => {
+  return dailyResult.value?.streak_days ?? dailyStatus.value?.streak_days ?? 0
+})
+
+async function refreshDailyStatus() {
+  try {
+    dailyStatus.value = await hugs.getDailyRewardStatus()
+  } catch {
+    // Non-fatal: the claim button stays in its default state if status fails.
+  }
+}
 
 // Hug detail modal
 const detailHugId = ref<string | null>(null)
@@ -77,6 +113,10 @@ onMounted(async () => {
   const balancePromise = hugs.fetchBalance()
   const inboxPromise = hugs.fetchInbox()
   const outgoingPromise = hugs.fetchOutgoing()
+  // Daily-reward status is fire-and-forget — it updates the button label and
+  // countdown when it lands, but the rest of the dashboard doesn't depend
+  // on it.
+  refreshDailyStatus()
 
   let profilePromise: Promise<UserProfile> | undefined
   let historyPromise: ReturnType<typeof hugs.getHugHistory> | undefined
@@ -124,14 +164,17 @@ function formatDate(dateStr: string): string {
 }
 
 async function claimDaily() {
+  if (dailyAlreadyClaimed.value || claimingDaily.value) return
   claimingDaily.value = true
   try {
     dailyResult.value = await hugs.claimDailyReward()
-      if (dailyResult.value.already_claimed) {
+    if (dailyResult.value.already_claimed) {
       toast.info('Вы уже получили награду сегодня')
     } else {
       toast.success(`Получено +${plural(dailyResult.value.amount, 'обниманя', 'обнимани', 'обнимань')}!`)
     }
+    // Pull a fresh status so the button locks and the countdown begins.
+    refreshDailyStatus()
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } }
     toast.error(err.response?.data?.message || 'Ошибка')
@@ -228,23 +271,35 @@ const rankInfo = () => getRankProgress(profile.value?.total_hugs ?? 0)
           >
         </CardHeader>
         <CardContent class="flex flex-1 flex-col justify-end space-y-3">
-          <div v-if="dailyResult" class="text-sm">
-            <p v-if="dailyResult.already_claimed" class="text-muted-foreground">
-              Уже получено сегодня. Серия: {{ dailyResult.streak_days }} дн.
+          <div v-if="dailyAlreadyClaimed" class="text-sm space-y-0.5">
+            <p class="text-muted-foreground">
+              Награда уже получена. Серия: {{ dailyStreakDays }} дн.
             </p>
-            <p v-else class="text-prod-yellow">
+            <p v-if="dailyNextClaimText" class="text-xs text-muted-foreground">
+              Следующая через
+              <span class="font-mono tabular-nums">{{ dailyNextClaimText }}</span>
+            </p>
+          </div>
+          <div v-else-if="dailyResult" class="text-sm">
+            <p class="text-prod-yellow">
               +{{ plural(dailyResult.amount, 'обниманя', 'обнимани', 'обнимань') }}! Серия:
               {{ dailyResult.streak_days }} дн.
             </p>
           </div>
           <Button
             @click="claimDaily"
-            :disabled="claimingDaily"
+            :disabled="claimingDaily || dailyAlreadyClaimed"
             variant="yellow"
             class="w-full rounded-[21px]"
           >
             <Gift class="size-4" />
-            {{ claimingDaily ? 'Загрузка...' : 'Забрать награду' }}
+            {{
+              dailyAlreadyClaimed
+                ? 'Награда уже получена'
+                : claimingDaily
+                  ? 'Загрузка...'
+                  : 'Забрать награду'
+            }}
           </Button>
         </CardContent>
       </Card>
