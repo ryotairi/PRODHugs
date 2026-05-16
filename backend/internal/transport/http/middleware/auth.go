@@ -4,15 +4,19 @@ import (
 	"context"
 	"fmt"
 	"go-service-template/internal/jwt"
+	"go-service-template/internal/transport/http/authctx"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 )
 
-type contextKey string
-
-const UserIDContextKey contextKey = "user_id"
-const UserRoleContextKey contextKey = "user_role"
+// UserIDContextKey is re-exported from authctx for backward compatibility
+// with existing callers (v1 handlers). New code should import authctx
+// directly to avoid pulling in the full middleware package.
+const (
+	UserIDContextKey   = authctx.UserIDContextKey
+	UserRoleContextKey = authctx.UserRoleContextKey
+)
 
 func NewAuthenticator(jwtManager *jwt.Manager) openapi3filter.AuthenticationFunc {
 	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
@@ -55,8 +59,8 @@ func NewAuthenticator(jwtManager *jwt.Manager) openapi3filter.AuthenticationFunc
 		}
 
 		req := input.RequestValidationInput.Request
-		ctxWithUser := context.WithValue(req.Context(), UserIDContextKey, userID)
-		ctxWithUser = context.WithValue(ctxWithUser, UserRoleContextKey, userRole)
+		ctxWithUser := context.WithValue(req.Context(), authctx.UserIDContextKey, userID)
+		ctxWithUser = context.WithValue(ctxWithUser, authctx.UserRoleContextKey, userRole)
 
 		*req = *req.WithContext(ctxWithUser)
 
