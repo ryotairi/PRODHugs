@@ -34,9 +34,10 @@ const bid = ref(10)
 const message = ref('')
 
 const minBid = computed(() => {
-  // To get into top 3, we need to outbid the 3rd person if all slots are full
-  // But for simplicity, let's just say min is current highest + 1 or a base price
-  return 5
+  // Base price is 5
+  // If we want to be #1, we need to outbid the current #1
+  const currentMax = hugsStore.vips?.[0]?.promotion_bid ?? 0
+  return Math.max(5, currentMax + 1)
 })
 
 const canAfford = computed(() => {
@@ -57,7 +58,11 @@ async function handlePromote() {
     toast.success(`VIP-статус активирован! Вы в топе за ${bid.value} монет.`)
     emit('success')
     emit('update:open', false)
-    await Promise.all([auth.fetchMe(), hugsStore.fetchBalance()])
+    await Promise.all([
+      auth.fetchMe(), 
+      hugsStore.fetchBalance(),
+      hugsStore.fetchVIPs()
+    ])
   } catch (error: any) {
     toast.error('Ошибка', {
       description: error.response?.data?.message || 'Не удалось активировать VIP',

@@ -25,7 +25,8 @@ type service interface {
 	IsRefreshTokenActive(ctx context.Context, jti string) (bool, error)
 	RevokeRefreshToken(ctx context.Context, jti string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
-	PromoteUser(ctx context.Context, id uuid.UUID, durationHours int32, message *string) (*models.User, error)
+	PromoteUser(ctx context.Context, id uuid.UUID, bid int32, message *string) (*models.User, error)
+	ListVIPUsers(ctx context.Context) ([]*models.User, error)
 	GenerateSudokuCaptcha(ctx context.Context, userID uuid.UUID) (uuid.UUID, [][]int, error)
 	VerifySudokuCell(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID, row, col, value int) (*userService.CaptchaResult, error)
 	CompleteSudoku(ctx context.Context, captchaID uuid.UUID, userID uuid.UUID) (string, error)

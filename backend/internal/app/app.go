@@ -150,6 +150,9 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	userService.SetAnnouncementRemovedCallback(func(id uuid.UUID) {
 		a.hub.Broadcast("announcement_removed", map[string]string{"id": id.String()})
 	})
+	userService.SetPromotionUpdatedCallback(func() {
+		a.hub.Broadcast("vips_updated", nil)
+	})
 
 	// Handlers
 	userHandler := userhandler.New(userService, jwtManager, a.cfg.JWT.CookieSecure)

@@ -185,6 +185,7 @@ export const balanceApi = {
 export const usersApi = {
   search: (q = '', limit = 20, offset = 0) =>
     api.get('/users/search', { params: { q, limit, offset } }),
+  getVIPs: () => api.get('/users/vips'),
   getProfile: (userId: string) => api.get(`/users/${userId}/profile`),
   updateSettings: (data: { gender?: string; display_name?: string | null }) =>
     api.put('/users/me/settings', data),

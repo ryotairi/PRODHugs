@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"time"
 
 	"go-service-template/internal/db/sqlc/storage"
@@ -341,6 +342,7 @@ func toAdminUser(u storage.ListUsersAdminRow) *models.AdminUser {
 		CaptchaCooldownUntil: captchaCooldownUntil,
 		PromotedUntil:        promotedUntil,
 		PromotionMessage:     promotionMessage,
+		PromotionBid:         u.PromotionBid,
 	}
 }
 
@@ -401,5 +403,66 @@ func toAdminUserFromSearch(u storage.SearchUsersAdminRow) *models.AdminUser {
 		CaptchaCooldownUntil: captchaCooldownUntil,
 		PromotedUntil:        promotedUntil,
 		PromotionMessage:     promotionMessage,
+		PromotionBid:         u.PromotionBid,
 	}
+}
+
+func toModelUserListItemFromVIP(row storage.ListVIPUsersRow) *models.User {
+	var gender *string
+	if row.Gender.Valid {
+		gender = &row.Gender.String
+	}
+	var displayName *string
+	if row.DisplayName.Valid {
+		displayName = &row.DisplayName.String
+	}
+	var tag *string
+	if row.Tag.Valid {
+		tag = &row.Tag.String
+	}
+	var specialTag *string
+	if row.SpecialTag.Valid {
+		specialTag = &row.SpecialTag.String
+	}
+	var promotedUntil *time.Time
+	if row.PromotedUntil.Valid {
+		promotedUntil = &row.PromotedUntil.Time
+	}
+	var promotionMessage *string
+	if row.PromotionMessage.Valid {
+		promotionMessage = &row.PromotionMessage.String
+	}
+
+	var avgResponseTime *float64
+	if row.AvgResponseTime >= 0 {
+		avgResponseTime = &row.AvgResponseTime
+	}
+
+	return &models.User{
+		ID:               row.ID,
+		Username:         row.Username,
+		Role:             row.Role,
+		Gender:           gender,
+		DisplayName:      displayName,
+		Tag:              tag,
+		SpecialTag:       specialTag,
+		IsTelegramLinked: row.IsTelegramLinked,
+		PromotedUntil:    promotedUntil,
+		PromotionMessage: promotionMessage,
+		PromotionBid:     row.PromotionBid,
+		AvgResponseTime:  avgResponseTime,
+	}
+}
+
+func (r *repo) ListVIPUsers(ctx context.Context) ([]*models.User, error) {
+	rows, err := r.q.ListVIPUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*models.User, len(rows))
+	for i, row := range rows {
+		result[i] = toModelUserListItemFromVIP(row)
+	}
+	return result, nil
 }

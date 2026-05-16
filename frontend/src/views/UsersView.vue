@@ -4,6 +4,7 @@ import { Search, Loader2, Star, Zap, Crown, Coins as Coin } from 'lucide-vue-nex
 import { useHugsStore } from '@/stores/hugs'
 import { useOnlineStore } from '@/stores/online'
 import { useAuthStore } from '@/stores/auth'
+import { useWebSocket } from '@/composables/useWebSocket'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,6 +17,7 @@ const PAGE_SIZE = 30
 const hugsStore = useHugsStore()
 const onlineStore = useOnlineStore()
 const auth = useAuthStore()
+const ws = useWebSocket()
 const query = ref('')
 const users = ref<any[]>([])
 const loading = ref(false)
@@ -32,9 +34,7 @@ watch(promotionOpen, (isOpen) => {
 
 // ── Sponsored users (top 3) ──
 const sponsoredUsers = computed(() => {
-  const promoted = users.value.filter(u => u.promoted_until && new Date(u.promoted_until) > new Date())
-  // Only take first 3 for the special slots
-  return promoted.slice(0, 3)
+  return hugsStore.vips.slice(0, 3)
 })
 
 // ── Main list users (excluding those shown in sponsored slots) ──
@@ -44,7 +44,7 @@ const mainListUsers = computed(() => {
   return users.value
     .filter(u => !sponsoredIds.has(u.id))
     .sort((a, b) => {
-      // 1. Other promoted users (if > 3)
+      // 1. Other VIPs (if > 3)
       const aPromoted = a.promoted_until && new Date(a.promoted_until) > new Date() ? 0 : 1
       const bPromoted = b.promoted_until && new Date(b.promoted_until) > new Date() ? 0 : 1
       if (aPromoted !== bPromoted) return aPromoted - bPromoted
@@ -74,10 +74,14 @@ async function search() {
   loading.value = true
   hasMore.value = true
   try {
-    const result = await hugsStore.searchUsers(query.value, PAGE_SIZE, 0)
+    const [userList] = await Promise.all([
+      hugsStore.searchUsers(query.value, PAGE_SIZE, 0),
+      query.value ? Promise.resolve([]) : hugsStore.fetchVIPs()
+    ])
+    
     if (gen !== searchGeneration) return
-    users.value = result
-    hasMore.value = result.length >= PAGE_SIZE
+    users.value = userList
+    hasMore.value = userList.length >= PAGE_SIZE
   } finally {
     if (gen === searchGeneration) {
       loading.value = false
@@ -85,6 +89,15 @@ async function search() {
   }
   await nextTick()
   observeSentinel()
+}
+
+async function refreshVIPs() {
+  if (query.value) return
+  try {
+    await hugsStore.fetchVIPs()
+  } catch {
+    // Ignore
+  }
 }
 
 async function loadMore() {
@@ -122,7 +135,14 @@ watch(query, () => {
   debounceTimer = setTimeout(search, 300)
 })
 
-onMounted(search)
+let wsCleanup: (() => void) | null = null
+
+onMounted(() => {
+  search()
+  wsCleanup = ws.on('vips_updated', () => {
+    refreshVIPs()
+  })
+})
 
 onUnmounted(() => {
   if (debounceTimer) {
@@ -130,6 +150,7 @@ onUnmounted(() => {
     debounceTimer = null
   }
   observer?.disconnect()
+  wsCleanup?.()
   // Increment generation so any in-flight search response is discarded.
   searchGeneration++
 })
@@ -143,6 +164,21 @@ onUnmounted(() => {
     </div>
 
     <OutgoingHugsSection />
+
+    <div class="rounded-[10px] border border-prod-yellow/30 bg-prod-yellow/5 p-4 flex items-center justify-between gap-4">
+      <div class="space-y-1">
+        <h3 class="text-sm font-semibold flex items-center gap-1.5 text-prod-yellow">
+          <Star class="size-4 fill-prod-yellow" />
+          {{ isMePromoted ? 'Вы в ТОПе!' : 'Хотите в ТОП?' }}
+        </h3>
+        <p class="text-xs text-muted-foreground">
+          {{ isMePromoted ? 'Повысьте ставку, чтобы подняться ещё выше.' : 'Займите VIP-место, чтобы вас видели первым!' }}
+        </p>
+      </div>
+      <Button variant="outline" size="sm" class="border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black shrink-0" @click="promotionOpen = true">
+        {{ isMePromoted ? 'Повысить' : 'Занять место' }}
+      </Button>
+    </div>
 
     <div class="relative">
       <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

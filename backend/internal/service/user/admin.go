@@ -84,5 +84,9 @@ func (s *service) AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, capt
 }
 
 func (s *service) AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	return s.repo.AdminClearPromotion(ctx, id)
+	u, err := s.repo.AdminClearPromotion(ctx, id)
+	if err == nil && s.onPromotionUpdated != nil {
+		s.onPromotionUpdated()
+	}
+	return u, err
 }

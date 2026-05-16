@@ -11,8 +11,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -24,8 +29,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -38,8 +48,13 @@ SELECT
     u.promoted_until, u.promotion_message, u.promotion_bid,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
@@ -59,8 +74,13 @@ ORDER BY
     u.promotion_bid DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ) ASC NULLS LAST,
     COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
@@ -72,8 +92,13 @@ SELECT
     u.promoted_until, u.promotion_message, u.promotion_bid,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
@@ -92,11 +117,35 @@ ORDER BY
     u.promotion_bid DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ) ASC NULLS LAST,
     COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT @lim::int OFFSET @off::int;
+
+-- name: ListVIPUsers :many
+SELECT 
+    u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
+    (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
+    u.promoted_until, u.promotion_message, u.promotion_bid,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
+    ), -1)::float AS avg_response_time
+FROM users u
+WHERE u.promoted_until > NOW() AND u.banned_at IS NULL
+ORDER BY u.promotion_bid DESC;
 
 -- name: GetLeaderboard :many
 SELECT
@@ -183,8 +232,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id

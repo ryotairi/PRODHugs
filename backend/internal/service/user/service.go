@@ -34,6 +34,7 @@ type repo interface {
 	AdminUpdateDisplayName(ctx context.Context, id uuid.UUID, displayName *string) (*models.User, error)
 	SearchUsersAdmin(ctx context.Context, query string, limit, offset int32) ([]*models.AdminUser, error)
 	AdminDeleteUser(ctx context.Context, id uuid.UUID) error
+	ListVIPUsers(ctx context.Context) ([]*models.User, error)
 	AdminUpdateCaptchaType(ctx context.Context, id uuid.UUID, captchaType string) (*models.User, error)
 	AdminClearPromotion(ctx context.Context, id uuid.UUID) (*models.User, error)
 	PromoteUser(ctx context.Context, id uuid.UUID, promotedUntil time.Time, message *string, bid int32) (*models.User, error)
@@ -88,6 +89,7 @@ type announcementRepo interface {
 // AnnouncementCallback is called when an announcement is created or removed.
 type AnnouncementCallback func(announcement *models.Announcement)
 type AnnouncementRemovedCallback func(id uuid.UUID)
+type PromotionUpdatedCallback func()
 
 type service struct {
 	repo              repo
@@ -102,6 +104,7 @@ type service struct {
 
 	onAnnouncementCreated AnnouncementCallback
 	onAnnouncementRemoved AnnouncementRemovedCallback
+	onPromotionUpdated    PromotionUpdatedCallback
 }
 
 func New(repo repo, jwtManager jwtManager, opts ...func(*service)) *service {
@@ -154,4 +157,8 @@ func (s *service) SetAnnouncementCreatedCallback(cb AnnouncementCallback) {
 
 func (s *service) SetAnnouncementRemovedCallback(cb AnnouncementRemovedCallback) {
 	s.onAnnouncementRemoved = cb
+}
+
+func (s *service) SetPromotionUpdatedCallback(cb PromotionUpdatedCallback) {
+	s.onPromotionUpdated = cb
 }

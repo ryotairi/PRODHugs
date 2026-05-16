@@ -580,8 +580,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -643,8 +648,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -706,8 +716,13 @@ SELECT
     COALESCE(b.amount, 0)::int AS balance,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN balances b ON b.user_id = u.id
@@ -847,8 +862,13 @@ SELECT
     u.promoted_until, u.promotion_message, u.promotion_bid,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
@@ -867,8 +887,13 @@ ORDER BY
     u.promotion_bid DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ) ASC NULLS LAST,
     COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT $3::int OFFSET $2::int
@@ -1005,6 +1030,74 @@ func (q *Queries) ListUsersAdmin(ctx context.Context, arg ListUsersAdminParams) 
 	return items, nil
 }
 
+const listVIPUsers = `-- name: ListVIPUsers :many
+SELECT 
+    u.id, u.username, u.role, u.gender, u.display_name, u.tag, u.special_tag,
+    (u.telegram_id IS NOT NULL)::bool AS is_telegram_linked,
+    u.promoted_until, u.promotion_message, u.promotion_bid,
+    COALESCE((
+        SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
+    ), -1)::float AS avg_response_time
+FROM users u
+WHERE u.promoted_until > NOW() AND u.banned_at IS NULL
+ORDER BY u.promotion_bid DESC
+`
+
+type ListVIPUsersRow struct {
+	ID               uuid.UUID
+	Username         string
+	Role             string
+	Gender           pgtype.Text
+	DisplayName      pgtype.Text
+	Tag              pgtype.Text
+	SpecialTag       pgtype.Text
+	IsTelegramLinked bool
+	PromotedUntil    pgtype.Timestamptz
+	PromotionMessage pgtype.Text
+	PromotionBid     int32
+	AvgResponseTime  float64
+}
+
+func (q *Queries) ListVIPUsers(ctx context.Context) ([]ListVIPUsersRow, error) {
+	rows, err := q.db.Query(ctx, listVIPUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVIPUsersRow
+	for rows.Next() {
+		var i ListVIPUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Role,
+			&i.Gender,
+			&i.DisplayName,
+			&i.Tag,
+			&i.SpecialTag,
+			&i.IsTelegramLinked,
+			&i.PromotedUntil,
+			&i.PromotionMessage,
+			&i.PromotionBid,
+			&i.AvgResponseTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const promoteUser = `-- name: PromoteUser :one
 UPDATE users
 SET promoted_until = $2, promotion_message = $3, promotion_bid = $4
@@ -1056,8 +1149,13 @@ SELECT
     u.promoted_until, u.promotion_message, u.promotion_bid,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ), -1)::float AS avg_response_time
 FROM users u
 LEFT JOIN LATERAL (
@@ -1077,8 +1175,13 @@ ORDER BY
     u.promotion_bid DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
-        FROM hugs h
-        WHERE h.receiver_id = u.id AND h.status = 'completed'
+        FROM (
+            SELECT accepted_at, created_at
+            FROM hugs
+            WHERE receiver_id = u.id AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 30
+        ) h
     ) ASC NULLS LAST,
     COALESCE(rt.last_visit, u.created_at) DESC NULLS LAST
 LIMIT $4::int OFFSET $3::int

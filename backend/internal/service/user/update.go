@@ -130,5 +130,8 @@ func (s *service) PromoteUser(ctx context.Context, id uuid.UUID, bid int32, mess
 	if err != nil {
 		return nil, err
 	}
+	if s.onPromotionUpdated != nil {
+		s.onPromotionUpdated()
+	}
 	return result, nil
 }
