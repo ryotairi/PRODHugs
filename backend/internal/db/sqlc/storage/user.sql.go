@@ -909,7 +909,7 @@ SELECT
     u.vip_remaining_seconds, u.vip_cooldown_until,
     (EXISTS (
         SELECT 1 FROM hugs 
-        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
     ))::bool AS is_recently_active,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
@@ -934,11 +934,14 @@ WHERE u.banned_at IS NULL
     SELECT blocker_id FROM user_blocks WHERE blocked_id = $1::uuid
   )
 ORDER BY 
-    (u.promoted_until > NOW()) DESC,
+    (u.promoted_until > NOW() AND (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    ))) DESC,
     u.promotion_bid DESC,
     (EXISTS (
         SELECT 1 FROM hugs 
-        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
     )) DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
@@ -1104,7 +1107,7 @@ SELECT
     u.vip_remaining_seconds, u.vip_cooldown_until,
     (EXISTS (
         SELECT 1 FROM hugs 
-        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
     ))::bool AS is_recently_active,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
@@ -1117,7 +1120,12 @@ SELECT
         ) h
     ), -1)::float AS avg_response_time
 FROM users u
-WHERE u.promoted_until > NOW() AND u.banned_at IS NULL
+WHERE u.promoted_until > NOW() 
+  AND u.banned_at IS NULL
+  AND (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    ))
 ORDER BY u.promotion_bid DESC
 `
 
@@ -1229,7 +1237,7 @@ SELECT
     u.vip_remaining_seconds, u.vip_cooldown_until,
     (EXISTS (
         SELECT 1 FROM hugs 
-        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
     ))::bool AS is_recently_active,
     COALESCE((
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
@@ -1255,11 +1263,14 @@ WHERE (u.username ILIKE '%' || $1::text || '%' OR u.display_name ILIKE '%' || $1
     SELECT blocker_id FROM user_blocks WHERE blocked_id = $2::uuid
   )
 ORDER BY 
-    (u.promoted_until > NOW()) DESC,
+    (u.promoted_until > NOW() AND (EXISTS (
+        SELECT 1 FROM hugs 
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+    ))) DESC,
     u.promotion_bid DESC,
     (EXISTS (
         SELECT 1 FROM hugs 
-        WHERE receiver_id = u.id AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
+        WHERE (receiver_id = u.id OR giver_id = u.id) AND status = 'completed' AND accepted_at > NOW() - interval '3 days'
     )) DESC,
     (
         SELECT AVG(EXTRACT(EPOCH FROM (h.accepted_at - h.created_at)))
