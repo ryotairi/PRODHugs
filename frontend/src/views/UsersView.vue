@@ -106,26 +106,38 @@ const isMeOutbid = computed(() => {
   return isMePromoted.value && !isMeInTop3.value
 })
 
+const myLocalRemainingSeconds = ref(auth.user?.vip_remaining_seconds ?? 0)
+
+watch(() => auth.user?.vip_remaining_seconds, (val) => {
+  myLocalRemainingSeconds.value = val ?? 0
+})
+
 const myRemainingTime = ref('')
 let myTimerInterval: ReturnType<typeof setInterval> | null = null
 
 function updateMyTimer() {
-  if (!auth.user?.promoted_until) {
+  if (!isMePromoted.value || myLocalRemainingSeconds.value <= 0) {
     myRemainingTime.value = ''
     return
   }
-  const diff = new Date(auth.user.promoted_until).getTime() - Date.now()
-  if (diff <= 0) {
-    myRemainingTime.value = ''
-    return
+
+  // If I am in Top 3, tick down my budget
+  if (isMeInTop3.value && myLocalRemainingSeconds.value > 0) {
+    myLocalRemainingSeconds.value--
   }
-  const h = Math.floor(diff / 3600000)
-  const m = Math.floor((diff % 3600000) / 60000)
-  const s = Math.floor((diff % 60000) / 1000)
-  myRemainingTime.value = h > 0 ? `${h}ч ${m}м` : `${m}:${s.toString().padStart(2, '0')}`
+
+  const h = Math.floor(myLocalRemainingSeconds.value / 3600)
+  const m = Math.floor((myLocalRemainingSeconds.value % 3600) / 60)
+  const s = myLocalRemainingSeconds.value % 60
+  
+  if (h > 0) {
+    myRemainingTime.value = `${h}ч ${m}м`
+  } else {
+    myRemainingTime.value = `${m}:${s.toString().padStart(2, '0')}`
+  }
 }
 
-watch(() => auth.user?.promoted_until, (val) => {
+watch(() => auth.user?.id, (val) => {
   if (myTimerInterval) clearInterval(myTimerInterval)
   if (val) {
     updateMyTimer()
