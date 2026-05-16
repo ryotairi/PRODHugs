@@ -112,21 +112,46 @@ func (s *service) RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UU
 }
 
 func (s *service) PromoteUser(ctx context.Context, id uuid.UUID, bid int32, message *string) (*models.User, error) {
-	// Promotion lasts for 24 hours
-	promotedUntil := time.Now().Add(24 * time.Hour)
+	u, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 
 	var result *models.User
-	err := s.tx.RunInTx(ctx, func(txCtx context.Context) error {
-		bal, err := s.balanceRepo.DeductBalance(txCtx, id, bid)
-		if err != nil {
-			return err
+	err = s.tx.RunInTx(ctx, func(txCtx context.Context) error {
+		now := time.Now()
+		isAlreadyPromoted := u.PromotedUntil != nil && u.PromotedUntil.After(now)
+		
+		var cost int32
+		var promotedUntil time.Time
+
+		if isAlreadyPromoted {
+			// If already in top, pay the difference and keep the same timer
+			cost = bid - u.PromotionBid
+			if cost < 0 {
+				cost = 0 // Allow updating message without paying more, but don't refund
+			}
+			promotedUntil = *u.PromotedUntil
+		} else {
+			// First time or expired, pay full price and get 24h
+			cost = bid
+			promotedUntil = now.Add(24 * time.Hour)
 		}
-		if bal == nil {
-			return errorz.ErrInsufficientBalance
+
+		if cost > 0 {
+			bal, err := s.balanceRepo.DeductBalance(txCtx, id, cost)
+			if err != nil {
+				return err
+			}
+			if bal == nil {
+				return errorz.ErrInsufficientBalance
+			}
 		}
+
 		result, err = s.repo.PromoteUser(txCtx, id, promotedUntil, message, bid)
 		return err
 	})
+
 	if err != nil {
 		return nil, err
 	}

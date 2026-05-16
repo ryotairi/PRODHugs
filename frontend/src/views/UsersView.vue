@@ -64,6 +64,14 @@ const isMePromoted = computed(() => {
   return new Date(auth.user.promoted_until) > new Date()
 })
 
+const isMeInTop3 = computed(() => {
+  return sponsoredUsers.value.some(u => u.id === auth.user?.id)
+})
+
+const isMeOutbid = computed(() => {
+  return isMePromoted.value && !isMeInTop3.value
+})
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 // Monotonic counter to discard out-of-order search responses.
 let searchGeneration = 0
@@ -171,18 +179,25 @@ onUnmounted(() => {
 
     <OutgoingHugsSection />
 
-    <div class="rounded-[10px] border border-prod-yellow/30 bg-prod-yellow/5 p-4 flex items-center justify-between gap-4">
+    <div 
+      class="rounded-[10px] border p-4 flex items-center justify-between gap-4 transition-all duration-300"
+      :class="{
+        'border-prod-yellow/30 bg-prod-yellow/5': isMeInTop3,
+        'border-destructive/30 bg-destructive/5': isMeOutbid,
+        'border-muted bg-muted/5': !isMePromoted
+      }"
+    >
       <div class="space-y-1">
-        <h3 class="text-sm font-semibold flex items-center gap-1.5 text-prod-yellow">
-          <Star class="size-4 fill-prod-yellow" />
-          {{ isMePromoted ? 'Вы в ТОПе!' : 'Хотите в ТОП?' }}
+        <h3 class="text-sm font-semibold flex items-center gap-1.5" :class="isMeInTop3 ? 'text-prod-yellow' : isMeOutbid ? 'text-destructive' : ''">
+          <Star class="size-4" :class="isMeInTop3 ? 'fill-prod-yellow text-prod-yellow' : ''" />
+          {{ isMeInTop3 ? 'Вы в ТОПе!' : isMeOutbid ? 'Вашу ставку перебили!' : 'Хотите в ТОП?' }}
         </h3>
         <p class="text-xs text-muted-foreground">
-          {{ isMePromoted ? 'Повысьте ставку, чтобы подняться ещё выше.' : 'Займите VIP-место, чтобы вас видели первым!' }}
+          {{ isMeInTop3 ? 'Вы занимаете VIP-место. Повысьте ставку, чтобы подняться ещё выше.' : isMeOutbid ? 'Вас вытеснили из Топ-3. Поднимите ставку, чтобы вернуться!' : 'Займите VIP-место, чтобы вас видели первым!' }}
         </p>
       </div>
-      <Button variant="outline" size="sm" class="border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black shrink-0" @click="promotionOpen = true">
-        {{ isMePromoted ? 'Повысить' : 'Занять место' }}
+      <Button variant="outline" size="sm" class="shrink-0" :class="isMeInTop3 ? 'border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black' : isMeOutbid ? 'border-destructive text-destructive hover:bg-destructive hover:text-white' : 'border-prod-yellow text-prod-yellow hover:bg-prod-yellow hover:text-black'" @click="promotionOpen = true">
+        {{ isMeInTop3 ? 'Повысить' : isMeOutbid ? 'Вернуть место' : 'Занять место' }}
       </Button>
     </div>
 
