@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import {
   Coins,
   Clock,
@@ -37,6 +37,7 @@ import StreakBadge from '@/components/StreakBadge.vue'
 import { plural } from '@/lib/utils'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const hugsStore = useHugsStore()
 
@@ -48,8 +49,18 @@ const loading = ref(true)
 const upgrading = ref(false)
 const error = ref('')
 
-const userId = computed(() => route.params.id as string)
-const isMe = computed(() => auth.user?.id === userId.value)
+// The route can be either /user/@:username (canonical) or /user/:id (legacy
+// UUID lookup that redirects to the canonical URL once the profile loads).
+const routeKey = computed(() => {
+  const username = route.params.username as string | undefined
+  if (username) return `@${username}`
+  return (route.params.id as string) ?? ''
+})
+
+// Numeric/UUID id is only known after the profile loads (when navigating by
+// username) — most code paths only need the loaded profile's id.
+const userId = computed(() => profile.value?.id ?? (route.params.id as string) ?? '')
+const isMe = computed(() => !!auth.user && !!profile.value && auth.user.id === profile.value.id)
 const isBlocked = computed(() => profile.value?.is_blocked === true)
 const blocking = ref(false)
 
@@ -64,16 +75,31 @@ async function load() {
   pairStreak.value = null
   topStreaks.value = []
   try {
-    profile.value = await hugsStore.getUserProfile(userId.value)
-    if (!isMe.value && !profile.value.is_blocked) {
+    // v2 profile endpoint accepts UUID or username — pass routeKey as-is.
+    const loaded = await hugsStore.getUserProfile(routeKey.value)
+    profile.value = loaded
+
+    // If the user navigated by UUID, swap the URL to the canonical
+    // /user/@username form so links can be shared and the back-stack stays
+    // clean. router.replace preserves the entry instead of pushing a new one.
+    if (!route.params.username && loaded.username) {
+      await router.replace({
+        name: 'user-profile-by-username',
+        params: { username: loaded.username },
+      })
+    }
+
+    const meId = auth.user?.id
+    const viewingSelf = meId === loaded.id
+    if (!viewingSelf && !loaded.is_blocked) {
       const [cd, streak] = await Promise.all([
-        hugsStore.getCooldown(userId.value),
-        hugsStore.getPairStreak(userId.value).catch(() => null),
+        hugsStore.getCooldown(loaded.id),
+        hugsStore.getPairStreak(loaded.id).catch(() => null),
       ])
       cooldown.value = cd
       pairStreak.value = streak
     }
-    if (isMe.value) {
+    if (viewingSelf) {
       topStreaks.value = await hugsStore.getTopStreaks().catch(() => [])
     }
   } catch {
@@ -136,9 +162,11 @@ async function onHugged() {
 
 onMounted(load)
 
-// Re-fetch when navigating between user profiles (component is reused by Vue Router)
-watch(userId, () => {
-  load()
+// Re-fetch when navigating between user profiles (component is reused by Vue
+// Router). Watch the routeKey so both @username and UUID transitions trigger
+// a reload.
+watch(routeKey, (next, prev) => {
+  if (next && next !== prev) load()
 })
 </script>
 

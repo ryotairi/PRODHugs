@@ -308,7 +308,7 @@ onUnmounted(() => {
           v-model="query"
           type="text"
           class="flex h-9 w-full bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Поиск по имени..."
+          placeholder="Поиск по имени или @username"
           maxlength="64"
         />
       </div>
