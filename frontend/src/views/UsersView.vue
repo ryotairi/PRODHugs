@@ -18,6 +18,7 @@ const hugsStore = useHugsStore()
 const onlineStore = useOnlineStore()
 const auth = useAuthStore()
 const ws = useWebSocket()
+const { now } = useTicker()
 const query = ref('')
 const users = ref<any[]>([])
 const loading = ref(false)
@@ -70,33 +71,6 @@ const isMeOnCooldown = computed(() => {
   return new Date(auth.user.vip_cooldown_until) > new Date()
 })
 
-const cooldownTimeText = ref('')
-let cooldownInterval: ReturnType<typeof setInterval> | null = null
-
-function updateCooldownTimer() {
-  if (!auth.user?.vip_cooldown_until) {
-    cooldownTimeText.value = ''
-    return
-  }
-  const diff = new Date(auth.user.vip_cooldown_until).getTime() - Date.now()
-  if (diff <= 0) {
-    cooldownTimeText.value = ''
-    return
-  }
-  const h = Math.floor(diff / 3600000)
-  const m = Math.floor((diff % 3600000) / 60000)
-  const s = Math.floor((diff % 60000) / 1000)
-  cooldownTimeText.value = h > 0 ? `${h}ч ${m}м` : `${m}:${s.toString().padStart(2, '0')}`
-}
-
-watch(() => auth.user?.vip_cooldown_until, (val) => {
-  if (cooldownInterval) clearInterval(cooldownInterval)
-  if (val) {
-    updateCooldownTimer()
-    cooldownInterval = setInterval(updateCooldownTimer, 1000)
-  }
-}, { immediate: true })
-
 const isMeInTop3 = computed(() => {
   if (!auth.user?.id) return false
   const myId = auth.user.id.toLowerCase()
@@ -109,44 +83,30 @@ const isMeOutbid = computed(() => {
   return isMePromoted.value && !isMeInTop3.value
 })
 
-const myLocalRemainingSeconds = ref(auth.user?.vip_remaining_seconds ?? 0)
-
-watch(() => auth.user?.vip_remaining_seconds, (val) => {
-  myLocalRemainingSeconds.value = val ?? 0
+// Store the timestamp when my budget was last updated
+const myBudgetLastUpdatedAt = ref(Date.now())
+watch(() => auth.user?.vip_remaining_seconds, () => {
+  myBudgetLastUpdatedAt.value = Date.now()
 })
 
-const myRemainingTime = ref('')
-let myTimerInterval: ReturnType<typeof setInterval> | null = null
-
-function updateMyTimer() {
-  if (!isMePromoted.value || myLocalRemainingSeconds.value <= 0) {
-    myRemainingTime.value = ''
-    return
-  }
-
-  // If I am in Top 3, tick down my budget
-  if (isMeInTop3.value && myLocalRemainingSeconds.value > 0) {
-    myLocalRemainingSeconds.value--
-  }
-
-  const h = Math.floor(myLocalRemainingSeconds.value / 3600)
-  const m = Math.floor((myLocalRemainingSeconds.value % 3600) / 60)
-  const s = myLocalRemainingSeconds.value % 60
+const myRemainingTime = computed(() => {
+  if (!isMePromoted.value || auth.user?.vip_remaining_seconds === undefined) return ''
   
-  if (h > 0) {
-    myRemainingTime.value = `${h}ч ${m}м`
-  } else {
-    myRemainingTime.value = `${m}:${s.toString().padStart(2, '0')}`
+  let seconds = auth.user.vip_remaining_seconds
+  if (isMeInTop3.value && seconds > 0) {
+    const elapsedSinceUpdate = Math.floor((now.value - myBudgetLastUpdatedAt.value) / 1000)
+    seconds = Math.max(0, seconds - elapsedSinceUpdate)
   }
-}
+  
+  return formatRemainingTime(seconds)
+})
 
-watch(() => auth.user?.id, (val) => {
-  if (myTimerInterval) clearInterval(myTimerInterval)
-  if (val) {
-    updateMyTimer()
-    myTimerInterval = setInterval(updateMyTimer, 1000)
-  }
-}, { immediate: true })
+const cooldownTimeText = computed(() => {
+  if (!isMeOnCooldown.value || !auth.user?.vip_cooldown_until) return ''
+  const diff = new Date(auth.user.vip_cooldown_until).getTime() - now.value
+  const seconds = Math.max(0, Math.floor(diff / 1000))
+  return formatRemainingTime(seconds)
+})
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 // Monotonic counter to discard out-of-order search responses.

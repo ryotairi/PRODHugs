@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useOnlineStore } from '@/stores/online'
+import { useTicker } from '@/composables/useTicker'
+import { formatRemainingTime } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Send, Star, Zap, Coins as Coin, Timer } from 'lucide-vue-next'
 import HugButton from './HugButton.vue'
@@ -21,54 +23,34 @@ const props = defineProps<{
     promoted_until?: string | null
     promotion_message?: string | null
     promotion_bid?: number | null
+    vip_remaining_seconds?: number
   }
   isVip?: boolean
 }>()
 
 const auth = useAuthStore()
 const onlineStore = useOnlineStore()
+const { now } = useTicker()
 const isMe = auth.user?.id === props.user.id
 
-const localRemainingSeconds = ref(props.user.vip_remaining_seconds ?? 0)
-
-watch(() => props.user.vip_remaining_seconds, (val) => {
-  localRemainingSeconds.value = val ?? 0
+// Store the timestamp when the budget was last updated from backend
+const budgetLastUpdatedAt = ref(Date.now())
+watch(() => props.user.vip_remaining_seconds, () => {
+  budgetLastUpdatedAt.value = Date.now()
 })
 
-const remainingTimeText = ref('')
-let timerInterval: ReturnType<typeof setInterval> | null = null
-
-function updateRemainingTime() {
-  if (!props.user.promoted_until || localRemainingSeconds.value <= 0) {
-    remainingTimeText.value = ''
-    return
+const remainingTimeText = computed(() => {
+  if (!props.user.promoted_until || props.user.vip_remaining_seconds === undefined) return ''
+  
+  let seconds = props.user.vip_remaining_seconds
+  
+  // If user is currently in Top 3, we simulate local tick-down for smoothness
+  if (props.isVip && seconds > 0) {
+    const elapsedSinceUpdate = Math.floor((now.value - budgetLastUpdatedAt.value) / 1000)
+    seconds = Math.max(0, seconds - elapsedSinceUpdate)
   }
-
-  // If in Top 3, tick down
-  if (props.isVip && localRemainingSeconds.value > 0) {
-    localRemainingSeconds.value--
-  }
-
-  const hours = Math.floor(localRemainingSeconds.value / 3600)
-  const minutes = Math.floor((localRemainingSeconds.value % 3600) / 60)
-  const seconds = localRemainingSeconds.value % 60
-
-  if (hours > 0) {
-    remainingTimeText.value = `${hours}ч ${minutes}м`
-  } else {
-    remainingTimeText.value = `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-}
-
-onMounted(() => {
-  if (props.user.promoted_until) {
-    updateRemainingTime()
-    timerInterval = setInterval(updateRemainingTime, 1000)
-  }
-})
-
-onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval)
+  
+  return formatRemainingTime(seconds)
 })
 
 const formatResponseTime = (seconds: number) => {
