@@ -1,0 +1,227 @@
+name: PR bot
+
+# Listens for comments on PRs. Two commands are supported:
+#
+#   /ci [scope] [skip-docker]            (alias: @aurora ci …)
+#       Run the PR checks workflow. Open to anyone — the dispatched run
+#       only ever checks out the PR's head SHA and only ever does
+#       read-only inspection.
+#
+#   /label name [name …]                 (alias: @aurora label …)
+#       Add well-known labels to the PR. Allowed for: the PR author, anyone
+#       with write+ access, anyone whose commits have already been merged
+#       into the repo's default branch (a "contributor" in the recognised-
+#       face sense), and the bot owner.
+#
+# The bot owner (configured at the top of the script below) is always
+# accepted regardless of command — this is the maintainer's dev-mode
+# bypass.
+#
+# Reactions on the comment so the author sees we noticed:
+#   👀 received   🚀 dispatched/applied   👎 not allowed   😕 internal error
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  route:
+    name: Route command
+    runs-on: ubuntu-latest
+    if: >
+      github.event.issue.pull_request &&
+      (startsWith(github.event.comment.body, '/ci') ||
+       startsWith(github.event.comment.body, '/label') ||
+       contains(github.event.comment.body, '@aurora'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Handle command
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // ── Configuration ─────────────────────────────────────────
+            // Logins that always bypass auth (the bot's maintainers). The
+            // owner is intentionally tolerant of capitalisation — GitHub
+            // logins are case-insensitive.
+            const BOT_OWNERS = ['vadim-khristenko'];
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const commentId = context.payload.comment.id;
+            const issueNumber = context.payload.issue.number;
+            const actor = context.payload.comment.user.login;
+            const actorLower = actor.toLowerCase();
+            const rawBody = (context.payload.comment.body || '');
+
+            const react = async (content) => {
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner, repo, comment_id: commentId, content,
+                });
+              } catch (e) {
+                core.warning(`reaction ${content} failed: ${e.message}`);
+              }
+            };
+
+            // Acknowledge.
+            await react('eyes');
+
+            // ── Parse ────────────────────────────────────────────────
+            // First non-empty line is the command. Two forms:
+            //   /<verb> <args>
+            //   @aurora <verb> <args>
+            const firstLine = rawBody.split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '';
+            let verb = null;
+            let args = '';
+            const slash = firstLine.match(/^\/(\w+)\s*(.*)$/);
+            const mention = firstLine.match(/@aurora\s+(\w+)\s*(.*)$/i);
+            if (slash) { verb = slash[1].toLowerCase(); args = slash[2]; }
+            else if (mention) { verb = mention[1].toLowerCase(); args = mention[2]; }
+            if (!verb) {
+              core.info('no recognisable command in comment, exiting');
+              return;
+            }
+            core.info(`parsed command: verb=${verb} args=${JSON.stringify(args)} actor=${actor}`);
+
+            // ── Permission helpers ───────────────────────────────────
+            const isBotOwner = () => BOT_OWNERS.includes(actorLower);
+
+            const isPRAuthor = async () => {
+              try {
+                const pr = await github.rest.pulls.get({ owner, repo, pull_number: issueNumber });
+                return pr.data.user && pr.data.user.login.toLowerCase() === actorLower;
+              } catch { return false; }
+            };
+
+            const hasWritePermission = async () => {
+              try {
+                const r = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: actor,
+                });
+                return ['admin', 'maintain', 'write'].includes(r.data.permission);
+              } catch { return false; }
+            };
+
+            // True if the actor has any merged commits on the default branch
+            // — i.e. has had code accepted into the project. Cheaper than
+            // paginating listContributors.
+            const isContributor = async () => {
+              try {
+                const r = await github.rest.repos.listCommits({
+                  owner, repo,
+                  author: actor,
+                  sha: context.payload.repository.default_branch,
+                  per_page: 1,
+                });
+                return r.data.length > 0;
+              } catch { return false; }
+            };
+
+            // Aurora's mild dev-mode hint — only logged, never visible to
+            // the user, so the owner doesn't get spammed with cute notices
+            // on every action.
+            if (isBotOwner()) {
+              core.info(`devmode: command invoked by bot owner @${actor}`);
+            }
+
+            // ── /ci — open to everyone ───────────────────────────────
+            if (verb === 'ci') {
+              const tokens = args.split(/\s+/).map((t) => t.toLowerCase()).filter(Boolean);
+              let targets = 'all';
+              let skipDocker = 'false';
+              for (const t of tokens) {
+                if (t === 'run') continue;
+                if (t === 'backend' || t === 'frontend' || t === 'all') targets = t;
+                else if (t === 'skip-docker' || t === 'nodocker') skipDocker = 'true';
+                else core.warning(`/ci: unknown token: ${t}`);
+              }
+
+              const pr = await github.rest.pulls.get({ owner, repo, pull_number: issueNumber });
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner, repo,
+                  workflow_id: 'pr-checks.yml',
+                  ref: context.payload.repository.default_branch,
+                  inputs: {
+                    pr_number: String(issueNumber),
+                    head_sha: pr.data.head.sha,
+                    targets,
+                    skip_docker: skipDocker,
+                  },
+                });
+                core.info(`dispatched: targets=${targets} skip_docker=${skipDocker}`);
+                await react('rocket');
+              } catch (e) {
+                core.setFailed(`dispatch failed: ${e.message}`);
+                await react('confused');
+              }
+              return;
+            }
+
+            // ── /label — PR author + write+ + contributors + owner ───
+            if (verb === 'label') {
+              const requested = args.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+              if (requested.length === 0) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issueNumber,
+                  body: `@${actor}, дайте хотя бы одно имя метки после \`/label\`. Список того, что я знаю — в \`.github/labels.json\`.\n\n— Аврора`,
+                });
+                return;
+              }
+
+              // Check permissions in order from cheapest to most expensive.
+              let allowed = isBotOwner();
+              if (!allowed) allowed = await isPRAuthor();
+              if (!allowed) allowed = await hasWritePermission();
+              if (!allowed) allowed = await isContributor();
+
+              if (!allowed) {
+                await react('-1');
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issueNumber,
+                  body: [
+                    `@${actor}, метки навешивают автор PR, участники с правом записи или`,
+                    `те, чьи коммиты уже в \`${context.payload.repository.default_branch}\`. Я понимаю, обидно — но это не я придумала.`,
+                    '',
+                    'Если вы планируете вкладываться в проект и вам нужен доступ, попросите мейнтейнера — я не торгую правами, я их просто проверяю.',
+                    '',
+                    '— Аврора',
+                  ].join('\n'),
+                });
+                return;
+              }
+
+              try {
+                const labelCmd = require('./.github/scripts/label-command.js');
+                const result = await labelCmd({
+                  github, core, owner, repo,
+                  issueNumber, requested, actor,
+                });
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issueNumber,
+                  body: result.summary,
+                });
+                await react(result.skipped.length === 0 ? 'rocket' : 'eyes');
+              } catch (e) {
+                core.setFailed(`label-command failed: ${e.message}`);
+                await react('confused');
+              }
+              return;
+            }
+
+            // ── Unknown verb ─────────────────────────────────────────
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: issueNumber,
+              body: `@${actor}, я знаю \`/ci\` и \`/label\` (также через \`@aurora …\`). Что вам нужно?\n\n— Аврора`,
+            });
+            await react('confused');

@@ -1,0 +1,23 @@
+[
+  { "name": "feature",        "color": "a2eeef", "description": "Новая функциональность" },
+  { "name": "bugfix",         "color": "d73a4a", "description": "Исправление ошибки" },
+  { "name": "refactor",       "color": "d4c5f9", "description": "Рефакторинг без изменения поведения" },
+  { "name": "chore",          "color": "cfd3d7", "description": "Рутинные изменения — рантайм, метаданные, конфиги" },
+  { "name": "docs",           "color": "0075ca", "description": "Только документация" },
+  { "name": "ci",             "color": "7057ff", "description": "Изменения в CI/CD" },
+  { "name": "tests",          "color": "bfdadc", "description": "Изменения только в тестах" },
+  { "name": "dependencies",   "color": "0366d6", "description": "Обновления зависимостей" },
+  { "name": "security",       "color": "ee0701", "description": "Связано с безопасностью" },
+  { "name": "breaking",       "color": "b60205", "description": "Несовместимое изменение — потребуется миграция" },
+  { "name": "performance",    "color": "fbca04", "description": "Влияет на производительность" },
+  { "name": "ux",             "color": "f9d0c4", "description": "Изменения интерфейса или пользовательского опыта" },
+  { "name": "wip",            "color": "fbca04", "description": "Work in progress — не мёрджить, ещё в работе" },
+  { "name": "ready",          "color": "0e8a16", "description": "Готов к ревью" },
+  { "name": "needs-review",   "color": "7fdbca", "description": "Ждёт ревью" },
+  { "name": "needs-rebase",   "color": "e4ad24", "description": "Конфликтует с master, нужен rebase" },
+  { "name": "discussion",     "color": "bfd4f2", "description": "Нужно обсуждение перед мёрджем" },
+  { "name": "hold",           "color": "b60205", "description": "Заблокировано — есть причина не мёрджить прямо сейчас" },
+  { "name": "wontmerge",      "color": "6a737d", "description": "Не будет смерджен — оставлено для истории" },
+  { "name": "good-first-issue", "color": "7057ff", "description": "Подходит, чтобы взять первым" },
+  { "name": "duplicate",      "color": "cfd3d7", "description": "Дубликат другого PR/issue" }
+]

@@ -1,16 +1,13 @@
 name: PR comment
 
-# This workflow exists because of how GitHub handles fork PRs: the PR-checks
-# workflow runs with a read-only GITHUB_TOKEN (the `permissions:` block in
-# workflows triggered by fork PRs is capped to read-only for security). It
-# cannot create comments.
+# Posts the CI report on the PR. Triggered by workflow_run because the
+# pr-checks workflow runs with a read-only GITHUB_TOKEN on fork PRs (GitHub
+# downgrades it for security) and cannot create comments. workflow_run runs
+# in the base-repo context with a normal token, so it can.
 #
-# `workflow_run` instead runs in the base repository's context with a normal
-# token, so it can post comments. We download the report.md + pr-number.txt
-# artifacts produced by pr-checks and call the same post-comment.js helper.
-#
-# Security note: we ONLY read artifacts and ONLY post comments. We never
-# check out or execute any PR-author code under these elevated permissions.
+# Security: we ONLY read artifacts (text reports) and ONLY post comments.
+# We never check out or execute any PR-author code under these elevated
+# permissions.
 
 on:
   workflow_run:
@@ -22,20 +19,26 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  # Pre-empt the September 2026 deprecation: explicitly run Node-based
+  # actions on Node 24 even though the runner default is still 20.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   comment:
     name: Post / update PR comment
     runs-on: ubuntu-latest
-    # If pr-checks was skipped entirely (e.g. workflow_dispatch with no
-    # artifacts to comment about) there's nothing for us to do.
-    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    # Originating event must be a PR (workflow_dispatch from the comment bot
+    # also lands here because it bubbles up under workflow_run; we'll cope by
+    # falling through if the artifact has no PR number).
+    if: ${{ github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Download backend report
         id: dl_backend
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: pr-report-backend
           path: ${{ runner.temp }}/backend-report
@@ -45,7 +48,7 @@ jobs:
       - name: Download frontend report
         id: dl_frontend
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: pr-report-frontend
           path: ${{ runner.temp }}/frontend-report
@@ -63,33 +66,31 @@ jobs:
             const path = require('path');
             const post = require('./.github/scripts/post-comment.js');
 
-            // Override context.payload.pull_request with the data carried in
-            // each artifact, since workflow_run events don't include the
-            // original PR payload directly.
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
             async function maybePost(dir) {
               if (!fs.existsSync(dir)) {
-                core.info(`no artifact at ${dir}`);
+                core.info(`no artifact at ${dir} — skipping (likely the target wasn't built this run)`);
                 return;
               }
               const bodyPath = path.join(dir, 'report.md');
               const numberPath = path.join(dir, 'pr-number.txt');
               const markerPath = path.join(dir, 'marker.txt');
-              if (![bodyPath, numberPath, markerPath].every(fs.existsSync)) {
-                core.warning(`incomplete artifact at ${dir}`);
-                return;
+              for (const f of [bodyPath, numberPath, markerPath]) {
+                if (!fs.existsSync(f)) {
+                  core.warning(`incomplete artifact at ${dir}: missing ${path.basename(f)}`);
+                  return;
+                }
               }
               const body = fs.readFileSync(bodyPath, 'utf8');
-              const prNumber = parseInt(fs.readFileSync(numberPath, 'utf8').trim(), 10);
+              const issueNumber = parseInt(fs.readFileSync(numberPath, 'utf8').trim(), 10);
               const marker = fs.readFileSync(markerPath, 'utf8').trim();
-              if (!Number.isFinite(prNumber)) {
-                core.warning(`bad PR number in ${numberPath}`);
+              if (!Number.isFinite(issueNumber) || issueNumber <= 0) {
+                core.warning(`artifact at ${dir} has invalid pr-number: ${issueNumber}`);
                 return;
               }
-              const fakeContext = {
-                ...context,
-                payload: { ...context.payload, pull_request: { number: prNumber } },
-              };
-              await post({ github, context: fakeContext, core, body, marker });
+              await post({ github, core, owner, repo, issueNumber, body, marker });
             }
 
             await maybePost(process.env.BACKEND_DIR);

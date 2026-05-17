@@ -1,37 +1,98 @@
 name: PR checks
 
-# PR-time quality gates. Runs on every pull_request, builds a Markdown
-# report per area (backend / frontend), and uploads it as an artifact for
-# pr-comment.yml to post on the PR.
+# PR-time quality gates. Runs on every pull_request and on demand via
+# workflow_dispatch (used by the comment-bot at .github/workflows/pr-bot.yml
+# for /ci-style reruns). Builds a Markdown report per area (backend /
+# frontend), uploads it as an artifact for pr-comment.yml to post.
 #
-# This workflow itself has read-only permissions because GitHub downgrades
-# the GITHUB_TOKEN to read-only for PRs from forks — the `permissions:` block
-# can't grant what isn't there. The companion pr-comment workflow runs in
-# the base-repo context (via `workflow_run`) with full write permissions and
-# does the actual commenting.
+# Permissions are read-only here: GitHub downgrades the GITHUB_TOKEN to
+# read-only for fork PRs, and the `permissions:` block can't override that.
+# The companion pr-comment workflow runs in the base-repo context and does
+# the actual commenting under full write permissions.
 
 on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to scope the run and the comment to'
+        required: false
+        type: string
+      head_sha:
+        description: 'SHA to check out (defaults to the workflow ref)'
+        required: false
+        type: string
+      targets:
+        description: 'Which areas to check'
+        required: false
+        type: choice
+        default: all
+        options: [all, backend, frontend]
+      skip_docker:
+        description: 'Skip the Docker image build steps'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-checks-${{ github.ref }}
+  # Manual reruns get their own group keyed on the PR number so they don't
+  # cancel a parallel pull_request-triggered run mid-flight.
+  group: pr-checks-${{ github.event.pull_request.number || inputs.pr_number || github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
-  changes:
-    name: Detect changes
+  # ───────────────────────────────────────────────────────────────────────
+  # Resolve which subtrees to check this run and where to point checkout.
+  # For pull_request: paths-filter against the PR diff.
+  # For workflow_dispatch: honour `targets` directly and use head_sha.
+  # ───────────────────────────────────────────────────────────────────────
+  setup:
+    name: Setup
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
+      pr_number: ${{ steps.context.outputs.pr_number }}
+      head_sha: ${{ steps.context.outputs.head_sha }}
+      backend: ${{ steps.scope.outputs.backend }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+      skip_docker: ${{ steps.context.outputs.skip_docker }}
     steps:
       - uses: actions/checkout@v6
-      - id: filter
+
+      - name: Resolve PR context
+        id: context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          IN_PR_NUMBER: ${{ inputs.pr_number }}
+          IN_HEAD_SHA: ${{ inputs.head_sha }}
+          IN_SKIP_DOCKER: ${{ inputs.skip_docker }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            pr_number="$EVT_PR_NUMBER"
+            head_sha="$EVT_HEAD_SHA"
+          else
+            pr_number="$IN_PR_NUMBER"
+            head_sha="${IN_HEAD_SHA:-$GITHUB_SHA}"
+          fi
+          {
+            echo "pr_number=$pr_number"
+            echo "head_sha=$head_sha"
+            echo "skip_docker=${IN_SKIP_DOCKER:-false}"
+          } >> "$GITHUB_OUTPUT"
+
+      # paths-filter only fires on pull_request; the `scope` step below
+      # merges its outputs with the workflow_dispatch `targets` input.
+      - name: paths-filter
+        id: filter
+        if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@v4
         with:
           filters: |
@@ -39,23 +100,73 @@ jobs:
               - 'backend/**'
               - '.github/workflows/pr-checks.yml'
               - '.github/workflows/pr-comment.yml'
+              - '.github/workflows/pr-bot.yml'
               - '.github/scripts/**'
             frontend:
               - 'frontend/**'
               - '.github/workflows/pr-checks.yml'
               - '.github/workflows/pr-comment.yml'
+              - '.github/workflows/pr-bot.yml'
               - '.github/scripts/**'
 
+      - name: Resolve scope
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TARGETS: ${{ inputs.targets || 'all' }}
+          FILTER_BACKEND: ${{ steps.filter.outputs.backend }}
+          FILTER_FRONTEND: ${{ steps.filter.outputs.frontend }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$TARGETS" in
+              backend)  backend=true;  frontend=false ;;
+              frontend) backend=false; frontend=true  ;;
+              *)        backend=true;  frontend=true  ;;
+            esac
+          else
+            backend="${FILTER_BACKEND:-false}"
+            frontend="${FILTER_FRONTEND:-false}"
+          fi
+          {
+            echo "backend=$backend"
+            echo "frontend=$frontend"
+          } >> "$GITHUB_OUTPUT"
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Backend job
+  # ───────────────────────────────────────────────────────────────────────
   backend:
     name: Backend checks
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    needs: setup
+    if: needs.setup.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+    env:
+      PR_NUMBER: ${{ needs.setup.outputs.pr_number }}
+      HEAD_SHA: ${{ needs.setup.outputs.head_sha }}
+      SKIP_DOCKER: ${{ needs.setup.outputs.skip_docker }}
+    services:
+      # Postgres for the smoke-test step. Cheaper than spinning up
+      # docker-compose; goose migrations run from the binary on startup.
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: service
+          POSTGRES_PASSWORD: smoke_password
+          POSTGRES_DB: service
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U service -d service"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.setup.outputs.head_sha }}
 
       - uses: actions/setup-go@v6
         with:
@@ -65,8 +176,7 @@ jobs:
 
       - name: Install codegen + lint tooling
         # golangci-lint must be compiled with a Go toolchain >= the project's
-        # go.mod (1.25). The published binaries lag, so we go install from
-        # source — slower the first time, but compatible.
+        # go.mod (1.25). Pre-built binaries lag, so we go install from source.
         run: |
           go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.7.0
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
@@ -116,10 +226,8 @@ jobs:
           set -o pipefail
           golangci-lint run --timeout=5m 2>&1 | tee "$RUNNER_TEMP/lint.out"
           status=${PIPESTATUS[0]}
-          # Post-process the capture to emit GitHub workflow annotations so
-          # each lint issue appears inline on the PR diff. File paths in the
-          # capture are relative to backend/; rewrite them to be repo-rooted
-          # so GitHub matches them against changed files.
+          # Emit one GitHub annotation per issue so the PR diff highlights
+          # every offending line directly.
           while IFS= read -r line; do
             if [[ "$line" =~ ^([^[:space:]][^:]*\.go):([0-9]+):([0-9]+):[[:space:]]*(.*)$ ]]; then
               printf '::error file=backend/%s,line=%s,col=%s::%s\n' \
@@ -156,6 +264,23 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke (curl happy-path)
+        id: smoke
+        continue-on-error: true
+        env:
+          POSTGRES_URL: postgres://service:smoke_password@127.0.0.1:5432/service?sslmode=disable
+          JWT_SECRET: smoke_secret_thirty_two_chars_minimum_so_jwt_lib_accepts
+          # Disable the per-IP auth rate limit during the smoke run — the
+          # whole test fires register/login many times from 127.0.0.1 in
+          # a couple of seconds and would otherwise instantly hit the
+          # 2-per-hour register cap.
+          AUTH_RATE_LIMIT_DISABLED: 'true'
+        run: |
+          set -o pipefail
+          go build -o /tmp/service ./cmd
+          export BACKEND_BIN=/tmp/service
+          bash ../.github/scripts/smoke-backend.sh 2>&1 | tee "$RUNNER_TEMP/smoke.out"
+
       - name: sqlc codegen drift
         id: sqlc
         continue-on-error: true
@@ -171,9 +296,11 @@ jobs:
           fi
 
       - uses: docker/setup-buildx-action@v4
+        if: env.SKIP_DOCKER != 'true'
 
-      - name: Docker image builds
+      - name: Docker image build
         id: docker
+        if: env.SKIP_DOCKER != 'true'
         continue-on-error: true
         uses: docker/build-push-action@v7
         with:
@@ -195,21 +322,24 @@ jobs:
           R_OAPI_V1: ${{ steps.oapi_v1.outcome }}
           R_OAPI_V2: ${{ steps.oapi_v2.outcome }}
           R_SQLC: ${{ steps.sqlc.outcome }}
-          R_DOCKER: ${{ steps.docker.outcome }}
+          R_SMOKE: ${{ steps.smoke.outcome }}
+          R_DOCKER: ${{ steps.docker.outcome || 'skipped' }}
+          JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ github.job }}
+          TRIGGER: ${{ github.event_name }}
         run: bash .github/scripts/summarize.sh backend
 
       - name: Stage artifact
-        if: always()
+        if: always() && env.PR_NUMBER != ''
         working-directory: ${{ github.workspace }}
         run: |
           mkdir -p "$RUNNER_TEMP/pr-artifact"
           cp "$RUNNER_TEMP/report.md" "$RUNNER_TEMP/pr-artifact/report.md"
-          echo "${{ github.event.pull_request.number }}" > "$RUNNER_TEMP/pr-artifact/pr-number.txt"
+          echo "$PR_NUMBER" > "$RUNNER_TEMP/pr-artifact/pr-number.txt"
           echo "backend-pr-checks" > "$RUNNER_TEMP/pr-artifact/marker.txt"
 
       - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && env.PR_NUMBER != ''
+        uses: actions/upload-artifact@v7
         with:
           name: pr-report-backend
           path: ${{ runner.temp }}/pr-artifact/
@@ -219,7 +349,7 @@ jobs:
       - name: Conclude
         if: always()
         env:
-          OUTCOMES: ${{ steps.gofmt.outcome }} ${{ steps.vet.outcome }} ${{ steps.build.outcome }} ${{ steps.test.outcome }} ${{ steps.lint.outcome }} ${{ steps.oapi_v1.outcome }} ${{ steps.oapi_v2.outcome }} ${{ steps.sqlc.outcome }} ${{ steps.docker.outcome }}
+          OUTCOMES: ${{ steps.gofmt.outcome }} ${{ steps.vet.outcome }} ${{ steps.build.outcome }} ${{ steps.test.outcome }} ${{ steps.lint.outcome }} ${{ steps.oapi_v1.outcome }} ${{ steps.oapi_v2.outcome }} ${{ steps.sqlc.outcome }} ${{ steps.smoke.outcome }} ${{ steps.docker.outcome }}
         run: |
           for o in $OUTCOMES; do
             if [ "$o" = "failure" ]; then
@@ -228,16 +358,25 @@ jobs:
             fi
           done
 
+  # ───────────────────────────────────────────────────────────────────────
+  # Frontend job
+  # ───────────────────────────────────────────────────────────────────────
   frontend:
     name: Frontend checks
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    needs: setup
+    if: needs.setup.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
+    env:
+      PR_NUMBER: ${{ needs.setup.outputs.pr_number }}
+      HEAD_SHA: ${{ needs.setup.outputs.head_sha }}
+      SKIP_DOCKER: ${{ needs.setup.outputs.skip_docker }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.setup.outputs.head_sha }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -258,7 +397,6 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          # Skip --fix in CI; humans should commit fixes deliberately.
           bun x eslint . --cache --no-warn-ignored 2>&1 | tee "$RUNNER_TEMP/eslint.out"
 
       - name: Type-check
@@ -276,9 +414,11 @@ jobs:
           bun run build-only 2>&1 | tee "$RUNNER_TEMP/build.out"
 
       - uses: docker/setup-buildx-action@v4
+        if: env.SKIP_DOCKER != 'true'
 
-      - name: Docker image builds
+      - name: Docker image build
         id: docker
+        if: env.SKIP_DOCKER != 'true'
         continue-on-error: true
         uses: docker/build-push-action@v7
         with:
@@ -296,21 +436,23 @@ jobs:
           R_ESLINT: ${{ steps.eslint.outcome }}
           R_TYPECHECK: ${{ steps.typecheck.outcome }}
           R_BUILD: ${{ steps.build.outcome }}
-          R_DOCKER: ${{ steps.docker.outcome }}
+          R_DOCKER: ${{ steps.docker.outcome || 'skipped' }}
+          JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ github.job }}
+          TRIGGER: ${{ github.event_name }}
         run: bash .github/scripts/summarize.sh frontend
 
       - name: Stage artifact
-        if: always()
+        if: always() && env.PR_NUMBER != ''
         working-directory: ${{ github.workspace }}
         run: |
           mkdir -p "$RUNNER_TEMP/pr-artifact"
           cp "$RUNNER_TEMP/report.md" "$RUNNER_TEMP/pr-artifact/report.md"
-          echo "${{ github.event.pull_request.number }}" > "$RUNNER_TEMP/pr-artifact/pr-number.txt"
+          echo "$PR_NUMBER" > "$RUNNER_TEMP/pr-artifact/pr-number.txt"
           echo "frontend-pr-checks" > "$RUNNER_TEMP/pr-artifact/marker.txt"
 
       - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && env.PR_NUMBER != ''
+        uses: actions/upload-artifact@v7
         with:
           name: pr-report-frontend
           path: ${{ runner.temp }}/pr-artifact/
