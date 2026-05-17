@@ -41,7 +41,7 @@ func (h *UserHandler) Login(ctx context.Context, req v1.LoginRequestObject) (v1.
 			Token: accessToken,
 		},
 		Headers: v1.Login200ResponseHeaders{
-			SetCookie: cookieStr,
+			SetCookie: &cookieStr,
 		},
 	}, nil
 }
@@ -79,4 +79,3 @@ func (h *UserHandler) GetVIPUsers(ctx context.Context, req v1.GetVIPUsersRequest
 
 	return result, nil
 }
-
