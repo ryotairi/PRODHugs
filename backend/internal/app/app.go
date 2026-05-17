@@ -31,16 +31,18 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
 
+	announcementrepo "go-service-template/internal/repository/announcement"
 	balancerepo "go-service-template/internal/repository/balance"
 	blockrepo "go-service-template/internal/repository/block"
 	dailyrewardrepo "go-service-template/internal/repository/daily_reward"
-	announcementrepo "go-service-template/internal/repository/announcement"
 	hugrepo "go-service-template/internal/repository/hug"
 	intimacyrepo "go-service-template/internal/repository/intimacy"
+	noterepo "go-service-template/internal/repository/note"
 	tokenrepo "go-service-template/internal/repository/token"
 	userrepo "go-service-template/internal/repository/user"
 
 	hugservice "go-service-template/internal/service/hug"
+	noteservice "go-service-template/internal/service/note"
 	userservice "go-service-template/internal/service/user"
 	"go-service-template/internal/telegram"
 
@@ -94,6 +96,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	refreshTokenRepo := tokenrepo.New(a.dbPool)
 	intimacyRepoInst := intimacyrepo.New(a.dbPool)
 	announcementRepo := announcementrepo.New(a.dbPool)
+	noteRepo := noterepo.New(a.dbPool)
 
 	// Transactor for database transactions
 	transactor := repository.NewTransactor(a.dbPool)
@@ -108,6 +111,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 		userservice.WithAnnouncementRepo(announcementRepo),
 	)
 	hugService := hugservice.New(hugRepo, balanceRepo, dailyRewardRepo, userRepo, blockRepoInst, intimacyRepoInst, jwtManager, transactor)
+	noteService := noteservice.New(noteRepo, userRepo)
 
 	// Telegram: client, bot, notifier, link store & login store
 	tgClient := telegram.New(a.cfg.Telegram.BotToken)
@@ -193,7 +197,7 @@ func New(ctx context.Context, cfg *config.Config, l *slog.Logger) (*App, error) 
 	v2StrictMiddlewares := []v2.StrictMiddlewareFunc{
 		v2.StrictErrorMiddleware,
 	}
-	v2Strict := v2.NewStrictHandler(v2.New(hugService, userService), v2StrictMiddlewares)
+	v2Strict := v2.NewStrictHandler(v2.New(hugService, userService, noteService), v2StrictMiddlewares)
 	v2.RegisterHandlers(v2Group, v2Strict)
 
 	// WebSocket endpoint (outside OpenAPI validation)
@@ -324,7 +328,7 @@ func (a *App) initDB(ctx context.Context) error {
 // migrateDB performs a migration to ensure the schema is up to date
 func (a *App) migrateDB() error {
 	conn := sql.OpenDB(stdlib.GetConnector(*a.dbPool.Config().ConnConfig))
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	return db.Migrate(conn)
 }

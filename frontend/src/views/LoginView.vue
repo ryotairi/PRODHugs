@@ -49,7 +49,7 @@ async function handleLogin() {
 
   try {
     await auth.login(username.value, password.value)
-  } catch (e: any) {
+  } catch (e: unknown) {
     const parsed = parseBackendError(e)
     if (parsed.fieldErrors.length > 0) {
       fieldErrors.value = [...fieldErrors.value, ...parsed.fieldErrors]

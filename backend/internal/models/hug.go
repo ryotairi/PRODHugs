@@ -63,8 +63,8 @@ type MutualHugStats struct {
 }
 
 type HugCooldown struct {
-	UserAID              uuid.UUID  // LEAST of the pair
-	UserBID              uuid.UUID  // GREATEST of the pair
+	UserAID              uuid.UUID // LEAST of the pair
+	UserBID              uuid.UUID // GREATEST of the pair
 	LastHugAt            time.Time
 	CooldownSeconds      int32
 	DeclineCooldownUntil *time.Time

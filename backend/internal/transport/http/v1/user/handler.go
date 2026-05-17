@@ -4,8 +4,8 @@ import (
 	"context"
 	"go-service-template/internal/jwt"
 	"go-service-template/internal/models"
-	"go-service-template/internal/telegram"
 	userService "go-service-template/internal/service/user"
+	"go-service-template/internal/telegram"
 	v1 "go-service-template/internal/transport/http/v1"
 	"time"
 
@@ -92,20 +92,20 @@ func toV1UserListItem(u *models.User) v1.UserListItem {
 	}
 
 	item := v1.UserListItem{
-		Id:               u.ID,
-		Username:         u.Username,
-		Role:             u.Role,
-		DisplayName:      u.DisplayName,
-		Tag:              u.Tag,
-		SpecialTag:       u.SpecialTag,
-		IsTelegramLinked: u.IsTelegramLinked,
-		AvgResponseTime:  avgResponseTime,
-		PromotedUntil:    u.PromotedUntil,
-		PromotionMessage: u.PromotionMessage,
-		PromotionBid:     ptr(int(u.PromotionBid)),
+		Id:                  u.ID,
+		Username:            u.Username,
+		Role:                u.Role,
+		DisplayName:         u.DisplayName,
+		Tag:                 u.Tag,
+		SpecialTag:          u.SpecialTag,
+		IsTelegramLinked:    u.IsTelegramLinked,
+		AvgResponseTime:     avgResponseTime,
+		PromotedUntil:       u.PromotedUntil,
+		PromotionMessage:    u.PromotionMessage,
+		PromotionBid:        ptr(int(u.PromotionBid)),
 		VipRemainingSeconds: ptr(int(u.VipRemainingSeconds)),
-		VipCooldownUntil: u.VipCooldownUntil,
-		IsRecentlyActive: ptr(u.IsRecentlyActive),
+		VipCooldownUntil:    u.VipCooldownUntil,
+		IsRecentlyActive:    ptr(u.IsRecentlyActive),
 	}
 	if u.Gender != nil {
 		g := v1.Gender(*u.Gender)
@@ -113,4 +113,3 @@ func toV1UserListItem(u *models.User) v1.UserListItem {
 	}
 	return item
 }
-

@@ -114,7 +114,7 @@ async function handleRegister() {
         // Non-critical — user can set it later in settings
       }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     const parsed = parseBackendError(e)
     if (parsed.fieldErrors.length > 0) {
       fieldErrors.value = [...fieldErrors.value, ...parsed.fieldErrors]

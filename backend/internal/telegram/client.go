@@ -76,7 +76,7 @@ func (c *Client) call(method string, params url.Values) error {
 	if err != nil {
 		return fmt.Errorf("telegram %s: %w", method, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

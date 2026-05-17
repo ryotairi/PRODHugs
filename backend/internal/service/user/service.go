@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"go-service-template/internal/models"
 	"go-service-template/internal/db/sqlc/storage"
+	"go-service-template/internal/models"
 	"math/rand/v2"
 	"time"
 
@@ -101,7 +101,7 @@ type service struct {
 	jwtManager        jwtManager
 	telegramLinkStore telegramLinkStore
 	announcementRepo  announcementRepo
-	botUsername        string
+	botUsername       string
 	tx                transactor
 	rng               *rand.Rand
 

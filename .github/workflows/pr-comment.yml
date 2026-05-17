@@ -1,0 +1,96 @@
+name: PR comment
+
+# This workflow exists because of how GitHub handles fork PRs: the PR-checks
+# workflow runs with a read-only GITHUB_TOKEN (the `permissions:` block in
+# workflows triggered by fork PRs is capped to read-only for security). It
+# cannot create comments.
+#
+# `workflow_run` instead runs in the base repository's context with a normal
+# token, so it can post comments. We download the report.md + pr-number.txt
+# artifacts produced by pr-checks and call the same post-comment.js helper.
+#
+# Security note: we ONLY read artifacts and ONLY post comments. We never
+# check out or execute any PR-author code under these elevated permissions.
+
+on:
+  workflow_run:
+    workflows: ["PR checks"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  comment:
+    name: Post / update PR comment
+    runs-on: ubuntu-latest
+    # If pr-checks was skipped entirely (e.g. workflow_dispatch with no
+    # artifacts to comment about) there's nothing for us to do.
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download backend report
+        id: dl_backend
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-report-backend
+          path: ${{ runner.temp }}/backend-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download frontend report
+        id: dl_frontend
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-report-frontend
+          path: ${{ runner.temp }}/frontend-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post comments
+        uses: actions/github-script@v9
+        env:
+          BACKEND_DIR: ${{ runner.temp }}/backend-report
+          FRONTEND_DIR: ${{ runner.temp }}/frontend-report
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const post = require('./.github/scripts/post-comment.js');
+
+            // Override context.payload.pull_request with the data carried in
+            // each artifact, since workflow_run events don't include the
+            // original PR payload directly.
+            async function maybePost(dir) {
+              if (!fs.existsSync(dir)) {
+                core.info(`no artifact at ${dir}`);
+                return;
+              }
+              const bodyPath = path.join(dir, 'report.md');
+              const numberPath = path.join(dir, 'pr-number.txt');
+              const markerPath = path.join(dir, 'marker.txt');
+              if (![bodyPath, numberPath, markerPath].every(fs.existsSync)) {
+                core.warning(`incomplete artifact at ${dir}`);
+                return;
+              }
+              const body = fs.readFileSync(bodyPath, 'utf8');
+              const prNumber = parseInt(fs.readFileSync(numberPath, 'utf8').trim(), 10);
+              const marker = fs.readFileSync(markerPath, 'utf8').trim();
+              if (!Number.isFinite(prNumber)) {
+                core.warning(`bad PR number in ${numberPath}`);
+                return;
+              }
+              const fakeContext = {
+                ...context,
+                payload: { ...context.payload, pull_request: { number: prNumber } },
+              };
+              await post({ github, context: fakeContext, core, body, marker });
+            }
+
+            await maybePost(process.env.BACKEND_DIR);
+            await maybePost(process.env.FRONTEND_DIR);

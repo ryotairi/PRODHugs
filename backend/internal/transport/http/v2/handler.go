@@ -42,13 +42,24 @@ type userService interface {
 	GetByUsername(ctx context.Context, username string) (*models.User, error)
 }
 
+// noteService handles per-user private notes (GET/PUT/DELETE per target, plus
+// list-by-author). See internal/service/note/.
+type noteService interface {
+	ResolveTarget(ctx context.Context, raw string) (*models.User, error)
+	Get(ctx context.Context, authorID, targetID uuid.UUID) (*models.UserNote, error)
+	Upsert(ctx context.Context, authorID, targetID uuid.UUID, content string) (*models.UserNote, error)
+	Delete(ctx context.Context, authorID, targetID uuid.UUID) error
+	List(ctx context.Context, authorID uuid.UUID, limit, offset int32) ([]*models.UserNote, error)
+}
+
 type Handler struct {
 	hugSvc  hugService
 	userSvc userService
+	noteSvc noteService
 }
 
-func New(hugSvc hugService, userSvc userService) *Handler {
-	return &Handler{hugSvc: hugSvc, userSvc: userSvc}
+func New(hugSvc hugService, userSvc userService, noteSvc noteService) *Handler {
+	return &Handler{hugSvc: hugSvc, userSvc: userSvc, noteSvc: noteSvc}
 }
 
 // Compile-time check that Handler satisfies the generated strict interface.

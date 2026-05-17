@@ -121,7 +121,7 @@ func (s *service) PromoteUser(ctx context.Context, id uuid.UUID, bid int32, mess
 	err = s.tx.RunInTx(ctx, func(txCtx context.Context) error {
 		now := time.Now()
 		isAlreadyPromoted := u.PromotedUntil != nil && u.PromotedUntil.After(now)
-		
+
 		var promotedUntil time.Time
 		farFuture := now.Add(100 * 365 * 24 * time.Hour)
 

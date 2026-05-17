@@ -9,6 +9,9 @@ import {
   Ban,
   ShieldCheck,
   Flame,
+  StickyNote,
+  Pencil,
+  Trash2,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import {
@@ -18,11 +21,21 @@ import {
   type PairStreakResponse,
   type TopStreakEntry,
 } from '@/stores/hugs'
+import { type UserNoteDTO } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +77,79 @@ const isMe = computed(() => !!auth.user && !!profile.value && auth.user.id === p
 const isBlocked = computed(() => profile.value?.is_blocked === true)
 const blocking = ref(false)
 
+// ── Private note state ──
+// Single 256-char note authored by the viewer about this profile. Visible only
+// to the author. Self-notes are allowed with an "о самом себе" easter-egg
+// label per product spec.
+const MAX_NOTE_LEN = 256
+const note = ref<UserNoteDTO | null>(null)
+const noteEditorOpen = ref(false)
+const noteEditorContent = ref('')
+const noteEditorSaving = ref(false)
+const noteDeleteConfirmOpen = ref(false)
+const noteDeleting = ref(false)
+
+// Count Unicode code points (not UTF-16 code units) so emoji and other
+// supplementary-plane chars match the backend's utf8.RuneCountInString /
+// Postgres char_length validation. "AB" → 2 ; "🙂" → 1 (string.length === 2).
+function codePointLength(s: string): number {
+  return [...s].length
+}
+
+const noteEditorLength = computed(() => codePointLength(noteEditorContent.value))
+const noteRemainingChars = computed(() => MAX_NOTE_LEN - noteEditorLength.value)
+const noteEditorCanSave = computed(() => {
+  const trimmed = noteEditorContent.value.trim()
+  const len = codePointLength(trimmed)
+  return len > 0 && len <= MAX_NOTE_LEN && !noteEditorSaving.value
+})
+
+// Enforce the limit in input ourselves: the native maxlength attribute counts
+// UTF-16 code units, which would block emoji that fit in the backend's
+// code-point budget. Replace `noteEditorContent` with a code-point-truncated
+// version whenever the user pushes past MAX_NOTE_LEN.
+function onNoteEditorInput() {
+  if (noteEditorLength.value <= MAX_NOTE_LEN) return
+  noteEditorContent.value = [...noteEditorContent.value].slice(0, MAX_NOTE_LEN).join('')
+}
+
+function openNoteEditor() {
+  noteEditorContent.value = note.value?.content ?? ''
+  noteEditorOpen.value = true
+}
+
+async function saveNote() {
+  if (!noteEditorCanSave.value || !profile.value) return
+  noteEditorSaving.value = true
+  try {
+    const saved = await hugsStore.upsertNote(routeKey.value, noteEditorContent.value.trim())
+    note.value = saved
+    noteEditorOpen.value = false
+    toast.success('Заметка сохранена')
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || 'Не удалось сохранить заметку')
+  } finally {
+    noteEditorSaving.value = false
+  }
+}
+
+async function deleteNote() {
+  if (noteDeleting.value || !profile.value) return
+  noteDeleting.value = true
+  try {
+    await hugsStore.deleteNote(routeKey.value)
+    note.value = null
+    noteDeleteConfirmOpen.value = false
+    toast.success('Заметка удалена')
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || 'Не удалось удалить заметку')
+  } finally {
+    noteDeleting.value = false
+  }
+}
+
 // Compute whether the viewer is user_a in the canonical pair (a < b by UUID string)
 const viewerIsA = computed(() => {
   if (!auth.user?.id) return true
@@ -74,6 +160,7 @@ async function load() {
   loading.value = true
   pairStreak.value = null
   topStreaks.value = []
+  note.value = null
   try {
     // v2 profile endpoint accepts UUID or username — pass routeKey as-is.
     const loaded = await hugsStore.getUserProfile(routeKey.value)
@@ -102,6 +189,18 @@ async function load() {
     if (viewingSelf) {
       topStreaks.value = await hugsStore.getTopStreaks().catch(() => [])
     }
+    // Notes are author-private — always fetch (including self) and tolerate
+    // failures (note display is non-critical, profile already loaded).
+    // Capture the routeKey that initiated this request so a slow response
+    // can't overwrite the note shown for a different profile if the user
+    // navigates away mid-fetch.
+    const noteFetchKey = routeKey.value
+    hugsStore.getNote(noteFetchKey).then((n) => {
+      if (noteFetchKey !== routeKey.value) return
+      note.value = n
+    }).catch(() => {
+      // Ignore — note section just stays empty.
+    })
   } catch {
     error.value = 'Пользователь не найден'
   } finally {
@@ -142,8 +241,9 @@ async function upgrade() {
   try {
     cooldown.value = await hugsStore.upgradeCooldown(userId.value)
     toast.success('Кулдаун уменьшен!')
-  } catch (e: any) {
-    toast.error(e.response?.data?.message || 'Недостаточно обнимань')
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || 'Недостаточно обнимань')
   } finally {
     upgrading.value = false
   }
@@ -214,9 +314,9 @@ watch(routeKey, (next, prev) => {
                 </span>
               </div>
             </div>
-            <div v-if="!isMe" class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5">
               <HugButton
-                v-if="!isBlocked"
+                v-if="!isMe && !isBlocked"
                 :userId="userId"
                 :username="profile.display_name || profile.username"
                 size="lg"
@@ -229,7 +329,11 @@ watch(routeKey, (next, prev) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-48">
-                  <DropdownMenuItem @click="toggleBlock" :disabled="blocking">
+                  <DropdownMenuItem v-if="!note" @click="openNoteEditor">
+                    <StickyNote class="size-4" />
+                    Добавить заметку
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="!isMe" @click="toggleBlock" :disabled="blocking">
                     <template v-if="isBlocked">
                       <ShieldCheck class="size-4" />
                       Разблокировать
@@ -245,6 +349,42 @@ watch(routeKey, (next, prev) => {
           </div>
         </CardContent>
       </Card>
+
+      <!-- Private note (visible only to the author). Shown only when one exists;
+           the empty state is just the "Добавить заметку" dropdown entry. -->
+      <div
+        v-if="note"
+        class="rounded-[10px] border border-prod-yellow/30 bg-prod-yellow/5 p-3 space-y-1.5"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <StickyNote class="size-3.5 text-prod-yellow" />
+            <span v-if="isMe">Заметка о самом себе (видна только вам)</span>
+            <span v-else>Заметка (видна только вам)</span>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              @click="openNoteEditor"
+              title="Редактировать"
+            >
+              <Pencil class="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7 text-destructive hover:text-destructive"
+              @click="noteDeleteConfirmOpen = true"
+              title="Удалить"
+            >
+              <Trash2 class="size-3.5" />
+            </Button>
+          </div>
+        </div>
+        <p class="whitespace-pre-wrap break-words text-sm">{{ note.content }}</p>
+      </div>
 
       <!-- Stats -->
       <div class="grid grid-cols-3 gap-2 sm:gap-4">
@@ -437,5 +577,59 @@ watch(routeKey, (next, prev) => {
         </CardContent>
       </Card>
     </template>
+
+    <!-- Note editor (add or edit). Dialog lives outside the v-if so it can
+         animate out cleanly when closed. -->
+    <Dialog v-model:open="noteEditorOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{{ note ? 'Изменить заметку' : 'Новая заметка' }}</DialogTitle>
+          <DialogDescription>
+            Заметка приватная — её увидите только вы. До {{ MAX_NOTE_LEN }} символов.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          v-model="noteEditorContent"
+          @input="onNoteEditorInput"
+          rows="4"
+          placeholder="Заметка о пользователе..."
+        />
+        <div class="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{{ noteRemainingChars }} символов осталось</span>
+        </div>
+        <DialogFooter class="gap-2 sm:gap-3">
+          <Button variant="outline" @click="noteEditorOpen = false" :disabled="noteEditorSaving">
+            Отмена
+          </Button>
+          <Button variant="yellow" :disabled="!noteEditorCanSave" @click="saveNote">
+            {{ noteEditorSaving ? 'Сохранение...' : 'Сохранить' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Delete confirmation -->
+    <Dialog v-model:open="noteDeleteConfirmOpen">
+      <DialogContent class="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Удалить заметку?</DialogTitle>
+          <DialogDescription>
+            Заметку нельзя будет восстановить.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="gap-2 sm:gap-3">
+          <Button
+            variant="outline"
+            @click="noteDeleteConfirmOpen = false"
+            :disabled="noteDeleting"
+          >
+            Отмена
+          </Button>
+          <Button variant="destructive" @click="deleteNote" :disabled="noteDeleting">
+            {{ noteDeleting ? 'Удаление...' : 'Удалить' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

@@ -13,7 +13,7 @@ import (
 
 func (r *repo) CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt time.Time) (storage.SudokuCaptcha, error) {
 	q := repository.Queries(ctx, r.q)
-	
+
 	exp := pgtype.Timestamptz{Time: expiresAt, Valid: true}
 	return q.CreateSudokuCaptcha(ctx, storage.CreateSudokuCaptchaParams{
 		UserID:    userID,

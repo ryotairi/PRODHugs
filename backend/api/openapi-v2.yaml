@@ -7,7 +7,7 @@ info:
     `oapi-codegen` exactly like v1 (`oapi-codegen -config oapi-codegen-v2.yml
     api/openapi-v2.yaml`). Handlers live in `internal/transport/http/v2/`.
 
-    v2 adds three endpoints on top of the v1 service layer:
+    v2 endpoints, on top of the v1 service layer:
 
       - GET /users/search supports an "@username" prefix that filters by
         username substring only (no display_name match).
@@ -15,6 +15,10 @@ info:
         (optionally prefixed with "@") in the path.
       - GET /daily-reward/status is a read-only status check for the daily
         reward (claim availability and next-claim time).
+      - GET/PUT/DELETE /users/{usernameOrId}/note manage the caller's private
+        per-target note (1 note per pair, ≤256 Unicode code points). Self-
+        notes are allowed by design.
+      - GET /notes lists the caller's notes ordered by recent updates.
 
     v1 (/api/v1) is still served as legacy.
 
@@ -143,6 +147,37 @@ components:
           format: date-time
           nullable: true
 
+    UserNote:
+      type: object
+      required: [target_id, content, updated_at]
+      properties:
+        target_id:
+          type: string
+          format: uuid
+        target_username:
+          type: string
+          description: Only present in the list endpoint.
+        target_display_name:
+          type: string
+          nullable: true
+          description: Only present in the list endpoint.
+        content:
+          type: string
+          minLength: 1
+          maxLength: 256
+        updated_at:
+          type: string
+          format: date-time
+
+    UpsertUserNoteRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 256
+
     DailyRewardStatus:
       type: object
       required: [can_claim, next_claim_at, streak_days]
@@ -225,6 +260,88 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /users/{usernameOrId}/note:
+    parameters:
+      - name: usernameOrId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get the caller's note about the target user
+      operationId: getUserNoteV2
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '200':
+          description: The note
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserNote' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Create or update the caller's note about the target user
+      operationId: upsertUserNoteV2
+      security:
+        - BearerAuth: ["user", "admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpsertUserNoteRequest' }
+      responses:
+        '200':
+          description: Note created or updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserNote' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete the caller's note about the target user
+      operationId: deleteUserNoteV2
+      security:
+        - BearerAuth: ["user", "admin"]
+      responses:
+        '204':
+          description: Deleted (or never existed)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /notes:
+    get:
+      summary: List the caller's notes
+      operationId: listUserNotesV2
+      security:
+        - BearerAuth: ["user", "admin"]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, default: 0, minimum: 0 }
+      responses:
+        '200':
+          description: List of notes authored by the caller
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserNote' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /daily-reward/status:
     get:

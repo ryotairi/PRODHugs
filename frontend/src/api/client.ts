@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import router from '@/router'
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/lib/token'
+import type { User } from '@/stores/auth'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -146,7 +147,7 @@ export const authApi = {
   initTelegramLogin: () =>
     api.post<{ bot_url: string; poll_token: string }>('/auth/telegram/init'),
   pollTelegramLogin: (pollToken: string) =>
-    api.post<{ token: string; user: any }>(
+    api.post<{ token: string; user: User }>(
       '/auth/telegram/poll',
       { poll_token: pollToken },
     ),
@@ -280,6 +281,28 @@ export const balanceApiV2 = {
       streak_days: number
       last_claimed_at?: string | null
     }>('/daily-reward/status'),
+}
+
+export interface UserNoteDTO {
+  target_id: string
+  target_username?: string
+  target_display_name?: string | null
+  content: string
+  updated_at: string
+}
+
+export const notesApiV2 = {
+  // usernameOrId may be a UUID, a bare username, or "@username".
+  get: (usernameOrId: string) =>
+    apiV2.get<UserNoteDTO>(`/users/${encodeURIComponent(usernameOrId)}/note`),
+  upsert: (usernameOrId: string, content: string) =>
+    apiV2.put<UserNoteDTO>(`/users/${encodeURIComponent(usernameOrId)}/note`, {
+      content,
+    }),
+  remove: (usernameOrId: string) =>
+    apiV2.delete<void>(`/users/${encodeURIComponent(usernameOrId)}/note`),
+  list: (limit = 50, offset = 0) =>
+    apiV2.get<UserNoteDTO[]>('/notes', { params: { limit, offset } }),
 }
 
 // Captcha

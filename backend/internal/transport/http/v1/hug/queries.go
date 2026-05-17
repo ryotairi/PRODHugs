@@ -157,9 +157,9 @@ func (h *HugHandler) GetLeaderboard(ctx context.Context, req v1.GetLeaderboardRe
 	result := make(v1.GetLeaderboard200JSONResponse, len(entries))
 	for i, e := range entries {
 		result[i] = v1.LeaderboardEntry{
-			UserId:      e.UserID,
-			Username:    e.Username,
-			DisplayName: e.DisplayName,
+			UserId:       e.UserID,
+			Username:     e.Username,
+			DisplayName:  e.DisplayName,
 			Tag:          e.Tag,
 			SpecialTag:   e.SpecialTag,
 			TotalHugs:    int(e.TotalHugs),
@@ -299,20 +299,20 @@ func (h *HugHandler) SearchUsers(ctx context.Context, req v1.SearchUsersRequestO
 		}
 
 		item := v1.UserListItem{
-			Id:               u.ID,
-			Username:         u.Username,
-			Role:             u.Role,
-			DisplayName:      u.DisplayName,
-			Tag:              u.Tag,
-			SpecialTag:       u.SpecialTag,
-			IsTelegramLinked: u.IsTelegramLinked,
-			AvgResponseTime:  avgResponseTime,
-			PromotedUntil:    u.PromotedUntil,
-			PromotionMessage: u.PromotionMessage,
-			PromotionBid:     ptr(int(u.PromotionBid)),
+			Id:                  u.ID,
+			Username:            u.Username,
+			Role:                u.Role,
+			DisplayName:         u.DisplayName,
+			Tag:                 u.Tag,
+			SpecialTag:          u.SpecialTag,
+			IsTelegramLinked:    u.IsTelegramLinked,
+			AvgResponseTime:     avgResponseTime,
+			PromotedUntil:       u.PromotedUntil,
+			PromotionMessage:    u.PromotionMessage,
+			PromotionBid:        ptr(int(u.PromotionBid)),
 			VipRemainingSeconds: ptr(int(u.VipRemainingSeconds)),
-			VipCooldownUntil: u.VipCooldownUntil,
-			IsRecentlyActive: ptr(u.IsRecentlyActive),
+			VipCooldownUntil:    u.VipCooldownUntil,
+			IsRecentlyActive:    ptr(u.IsRecentlyActive),
 		}
 		if u.Gender != nil {
 			g := v1.Gender(*u.Gender)

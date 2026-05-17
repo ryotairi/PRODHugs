@@ -107,10 +107,10 @@ func (r *repo) PromoteUser(ctx context.Context, id uuid.UUID, promotedUntil time
 	}
 
 	u, err := q.PromoteUser(ctx, storage.PromoteUserParams{
-		ID:            id,
-		PromotedUntil: pgtype.Timestamptz{Time: promotedUntil, Valid: true},
+		ID:               id,
+		PromotedUntil:    pgtype.Timestamptz{Time: promotedUntil, Valid: true},
 		PromotionMessage: msg,
-		PromotionBid:  bid,
+		PromotionBid:     bid,
 	})
 	if err != nil {
 		return nil, err

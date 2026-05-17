@@ -47,7 +47,7 @@ async function initCasino() {
   try {
     const res = await captchaApi.getCasino()
     captchaId.value = res.data.id
-  } catch (e) {
+  } catch {
     toast.error('Ошибка инициализации казино')
     emit('update:open', false)
   } finally {
@@ -99,9 +99,10 @@ async function spin() {
       }
     }, 4000)
     
-  } catch (e: any) {
+  } catch (e: unknown) {
     spinning.value = false
-    if (e.response?.status === 410) {
+    const err = e as { response?: { status?: number } }
+    if (err.response?.status === 410) {
       toast.error('Сессия истекла')
     } else {
       toast.error('Ошибка при крутке')

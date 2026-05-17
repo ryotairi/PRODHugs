@@ -274,5 +274,3 @@ func toModelPendingInboxItem(row storage.GetPendingHugsForUserRow) *models.Pendi
 		CreatedAt:        row.CreatedAt.Time,
 	}
 }
-
-

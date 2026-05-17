@@ -3,9 +3,9 @@ package user
 import (
 	"context"
 	"fmt"
-	"time"
 	"go-service-template/internal/models"
 	"go-service-template/pkg/crypto"
+	"time"
 
 	"github.com/google/uuid"
 )

@@ -32,7 +32,7 @@ type TelegramUserInfo struct {
 type loginSession struct {
 	BotToken   string
 	Status     LoginSessionStatus
-	UserID     uuid.UUID        // set when authenticated
+	UserID     uuid.UUID         // set when authenticated
 	UserInfo   *TelegramUserInfo // set by bot when user interacts
 	FailReason string            // set when failed
 	ExpiresAt  time.Time

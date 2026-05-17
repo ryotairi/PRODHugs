@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 	"go-service-template/internal/db/sqlc/storage"
 	"go-service-template/internal/errorz"
 	"go-service-template/internal/models"
 	"go-service-template/internal/repository"
 	"go-service-template/pkg/dberrors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -245,8 +245,8 @@ func (r *repo) SetVipCooldown(ctx context.Context, id uuid.UUID, cooldownUntil t
 	q := repository.Queries(ctx, r.q)
 
 	u, err := q.SetVipCooldown(ctx, storage.SetVipCooldownParams{
-		ID:                 id,
-		VipCooldownUntil:   pgtype.Timestamptz{Time: cooldownUntil, Valid: true},
+		ID:                  id,
+		VipCooldownUntil:    pgtype.Timestamptz{Time: cooldownUntil, Valid: true},
 		VipRemainingSeconds: remainingSeconds,
 	})
 	if err != nil {
@@ -260,7 +260,7 @@ func (r *repo) UpdateVipBudget(ctx context.Context, id uuid.UUID, remainingSecon
 	q := repository.Queries(ctx, r.q)
 
 	u, err := q.UpdateVipBudget(ctx, storage.UpdateVipBudgetParams{
-		ID:                 id,
+		ID:                  id,
 		VipRemainingSeconds: remainingSeconds,
 	})
 	if err != nil {

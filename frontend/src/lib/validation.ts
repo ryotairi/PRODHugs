@@ -109,12 +109,14 @@ interface BackendValidationError {
 
 type BackendError = BackendHandlerError | BackendValidationError
 
-function isHandlerError(data: any): data is BackendHandlerError {
-  return typeof data?.code === 'string' && typeof data?.message === 'string'
+function isHandlerError(data: unknown): data is BackendHandlerError {
+  const d = data as { code?: unknown; message?: unknown } | null | undefined
+  return typeof d?.code === 'string' && typeof d?.message === 'string'
 }
 
-function isValidationError(data: any): data is BackendValidationError {
-  return data?.type === 'validation_error' && typeof data?.detail === 'string'
+function isValidationError(data: unknown): data is BackendValidationError {
+  const d = data as { type?: unknown; detail?: unknown } | null | undefined
+  return d?.type === 'validation_error' && typeof d?.detail === 'string'
 }
 
 // Known handler error codes mapped to { field, russian message }
@@ -140,8 +142,8 @@ export interface ParsedBackendError {
  * Parse an axios error response from the backend into field-level
  * and general errors that the UI can display inline.
  */
-export function parseBackendError(e: any): ParsedBackendError {
-  const data: BackendError | undefined = e?.response?.data
+export function parseBackendError(e: unknown): ParsedBackendError {
+  const data = (e as { response?: { data?: BackendError } } | null | undefined)?.response?.data
   const result: ParsedBackendError = { fieldErrors: [], generalError: null }
 
   if (!data) {
@@ -189,7 +191,8 @@ export function parseBackendError(e: any): ParsedBackendError {
   }
 
   // Fallback
-  result.generalError = (data as any)?.message ?? 'Неизвестная ошибка'
+  result.generalError =
+    (data as { message?: string } | undefined)?.message ?? 'Неизвестная ошибка'
   return result
 }
 

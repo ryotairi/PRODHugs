@@ -267,9 +267,9 @@ func (s *service) GetInboxCount(ctx context.Context, userID uuid.UUID) (int64, e
 
 func (s *service) ClaimDailyReward(ctx context.Context, userID uuid.UUID) (int32, int32, int32, bool, error) {
 	var (
-		amount       int32
-		streakDays   int32
-		balAmount    int32
+		amount         int32
+		streakDays     int32
+		balAmount      int32
 		alreadyClaimed bool
 	)
 

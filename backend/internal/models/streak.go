@@ -12,7 +12,7 @@ type PairStreak struct {
 	UserBID        uuid.UUID
 	CurrentStreak  int32
 	BestStreak     int32
-	LastStreakDate  *time.Time // DATE only, stored as time.Time
+	LastStreakDate *time.Time // DATE only, stored as time.Time
 	AHuggedToday   bool
 	BHuggedToday   bool
 	TodayDate      time.Time // DATE only

@@ -57,7 +57,7 @@ func (s *service) SuggestHug(ctx context.Context, giverID, receiverID uuid.UUID,
 		if captchaToken == nil || *captchaToken == "" {
 			return nil, nil, errorz.ErrCaptchaRequired
 		}
-		
+
 		tokenUserID, err := s.jwtManager.ParseCaptchaToken(*captchaToken)
 		if err != nil || tokenUserID != giverID {
 			return nil, nil, errorz.ErrCaptchaFailed
@@ -155,16 +155,16 @@ func (s *service) SuggestHug(ctx context.Context, giverID, receiverID uuid.UUID,
 				giverUsername = giver.Username
 				giverGender = giver.Gender
 			}
-		s.onHugSuggestion(receiverID, &models.PendingHugInboxItem{
-			ID:            hugCopy.ID,
-			GiverID:       hugCopy.GiverID,
-			ReceiverID:    hugCopy.ReceiverID,
-			GiverUsername: giverUsername,
-			GiverGender:   giverGender,
-			HugType:       hugCopy.HugType,
-			Comment:       hugCopy.Comment,
-			CreatedAt:     hugCopy.CreatedAt,
-		}, hugCopy.Comment)
+			s.onHugSuggestion(receiverID, &models.PendingHugInboxItem{
+				ID:            hugCopy.ID,
+				GiverID:       hugCopy.GiverID,
+				ReceiverID:    hugCopy.ReceiverID,
+				GiverUsername: giverUsername,
+				GiverGender:   giverGender,
+				HugType:       hugCopy.HugType,
+				Comment:       hugCopy.Comment,
+				CreatedAt:     hugCopy.CreatedAt,
+			}, hugCopy.Comment)
 		}()
 	}
 
@@ -458,12 +458,12 @@ func (s *service) CancelHug(ctx context.Context, hugID, giverID uuid.UUID) error
 
 // CooldownInfoResult bundles cooldown data with intimacy reduction info.
 type CooldownInfoResult struct {
-	Cooldown              *models.HugCooldown
-	RemainingSeconds      int32
-	CanHug                bool
-	DeclineRemaining      int32
-	EffectiveCooldown     int32
-	IntimacyReductionPct  int
+	Cooldown             *models.HugCooldown
+	RemainingSeconds     int32
+	CanHug               bool
+	DeclineRemaining     int32
+	EffectiveCooldown    int32
+	IntimacyReductionPct int
 }
 
 // GetCooldownInfo returns cooldown details for a pair of users, including intimacy reduction.
@@ -524,12 +524,12 @@ func (s *service) GetCooldownInfo(ctx context.Context, userA, userB uuid.UUID) (
 	}
 
 	return &CooldownInfoResult{
-		Cooldown:              cooldown,
-		RemainingSeconds:      int32(remaining.Seconds()),
-		CanHug:                canHug,
-		DeclineRemaining:      declineRemaining,
-		EffectiveCooldown:     effectiveCooldown,
-		IntimacyReductionPct:  reductionPct,
+		Cooldown:             cooldown,
+		RemainingSeconds:     int32(remaining.Seconds()),
+		CanHug:               canHug,
+		DeclineRemaining:     declineRemaining,
+		EffectiveCooldown:    effectiveCooldown,
+		IntimacyReductionPct: reductionPct,
 	}, nil
 }
 

@@ -16,11 +16,11 @@ import (
 )
 
 var (
-    // wsUniqueUserCount tracks the number of distinct authenticated WebSocket users.
-    wsUniqueUserCount = prometheus.NewGauge(prometheus.GaugeOpts{
-        Name: "ws_unique_user_count",
-        Help: "Number of distinct authenticated WebSocket users.",
-    })
+	// wsUniqueUserCount tracks the number of distinct authenticated WebSocket users.
+	wsUniqueUserCount = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ws_unique_user_count",
+		Help: "Number of distinct authenticated WebSocket users.",
+	})
 	httpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",

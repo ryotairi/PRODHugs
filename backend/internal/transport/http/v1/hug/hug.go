@@ -352,13 +352,13 @@ func (h *HugHandler) GetCooldown(ctx context.Context, req v1.GetCooldownRequestO
 	}
 
 	resp := v1.GetCooldown200JSONResponse{
-		UserAId:                info.Cooldown.UserAID,
-		UserBId:                info.Cooldown.UserBID,
-		CooldownSeconds:        int(info.Cooldown.CooldownSeconds),
-		RemainingSeconds:       int(info.RemainingSeconds),
-		CanHug:                 info.CanHug,
+		UserAId:                  info.Cooldown.UserAID,
+		UserBId:                  info.Cooldown.UserBID,
+		CooldownSeconds:          int(info.Cooldown.CooldownSeconds),
+		RemainingSeconds:         int(info.RemainingSeconds),
+		CanHug:                   info.CanHug,
 		EffectiveCooldownSeconds: int(info.EffectiveCooldown),
-		IntimacyReductionPct:   info.IntimacyReductionPct,
+		IntimacyReductionPct:     info.IntimacyReductionPct,
 	}
 	if info.DeclineRemaining > 0 {
 		dr := int(info.DeclineRemaining)

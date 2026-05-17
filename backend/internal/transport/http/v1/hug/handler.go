@@ -47,8 +47,8 @@ type announcementService interface {
 }
 
 type HugHandler struct {
-	svc     service
-	annSvc  announcementService
+	svc    service
+	annSvc announcementService
 }
 
 func New(svc service, annSvc announcementService) *HugHandler {

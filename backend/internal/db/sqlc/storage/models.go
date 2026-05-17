@@ -128,3 +128,10 @@ type UserBlock struct {
 	BlockedID uuid.UUID
 	CreatedAt pgtype.Timestamptz
 }
+
+type UserNote struct {
+	AuthorID  uuid.UUID
+	TargetID  uuid.UUID
+	Content   string
+	UpdatedAt pgtype.Timestamptz
+}

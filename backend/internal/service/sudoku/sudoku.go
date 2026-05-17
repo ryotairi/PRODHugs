@@ -10,24 +10,24 @@ type Board [9][9]int
 func Generate() (puzzle Board, solution Board) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fillBoard(&solution, r)
-	
+
 	puzzle = solution
-	
+
 	// Remove some cells to create the puzzle
 	// A standard sudoku has ~20-30 cells missing for easy/medium
 	// Let's remove 40 cells for a decent challenge
 	cellsToRemove := 40
-	
+
 	for cellsToRemove > 0 {
 		row := r.Intn(9)
 		col := r.Intn(9)
-		
+
 		if puzzle[row][col] != 0 {
 			puzzle[row][col] = 0
 			cellsToRemove--
 		}
 	}
-	
+
 	return puzzle, solution
 }
 
@@ -39,7 +39,7 @@ func fillBoard(board *Board, r *rand.Rand) bool {
 				r.Shuffle(len(nums), func(i, j int) {
 					nums[i], nums[j] = nums[j], nums[i]
 				})
-				
+
 				for _, num := range nums {
 					if isValid(board, row, col, num) {
 						board[row][col] = num

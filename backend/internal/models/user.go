@@ -18,12 +18,12 @@ type User struct {
 	ID                   uuid.UUID
 	Username             string
 	Role                 string
-	HashedPassword string
-	Gender         *string
-	DisplayName    *string
-	Tag            *string
-	SpecialTag     *string
-	TelegramID     *int64
+	HashedPassword       string
+	Gender               *string
+	DisplayName          *string
+	Tag                  *string
+	SpecialTag           *string
+	TelegramID           *int64
 	BannedAt             *time.Time
 	CreatedAt            *time.Time
 	CaptchaType          string

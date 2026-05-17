@@ -11,15 +11,18 @@ import (
 )
 
 type Repository struct {
-	db *pgxpool.Pool
+	q *storage.Queries
 }
 
 func New(db *pgxpool.Pool) *Repository {
-	return &Repository{db: db}
+	return &Repository{q: storage.New(db)}
 }
 
+// Queries returns the sqlc query handle for this request, honoring an active
+// transaction if one is bound to ctx (mirrors the pattern used by all other
+// repositories in internal/repository/).
 func (r *Repository) Queries(ctx context.Context) *storage.Queries {
-	return repository.Queries(ctx, r.db)
+	return repository.Queries(ctx, r.q)
 }
 
 func (r *Repository) CreateSudokuCaptcha(ctx context.Context, userID uuid.UUID, puzzle []byte, solution []byte, expiresAt pgtype.Timestamptz) (storage.SudokuCaptcha, error) {

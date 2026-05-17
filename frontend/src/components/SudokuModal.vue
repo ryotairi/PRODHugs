@@ -7,7 +7,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { captchaApi } from '@/api/client'
 import { toast } from 'vue-sonner'
 import { Loader2 } from 'lucide-vue-next'
@@ -63,12 +62,12 @@ async function initSudoku() {
   activeCol.value = null
   try {
     const res = await captchaApi.getSudoku(props.targetId)
-    const data = res.data as any
+    const data = res.data
     if (data) {
       captchaId.value = data.id
       puzzle.value = data.puzzle
     }
-  } catch (e) {
+  } catch {
     toast.error('Ошибка загрузки судоку')
     emit('update:open', false)
   } finally {
@@ -111,7 +110,7 @@ async function verifyCell(r: number, c: number, val: number) {
   verifying.value = true
   try {
     const res = await captchaApi.verifyCell(captchaId.value, r, c, val)
-    const data = res.data as any
+    const data = res.data
     if (data?.correct) {
       puzzle.value[r]![c] = val
       activeRow.value = null
@@ -129,8 +128,9 @@ async function verifyCell(r: number, c: number, val: number) {
         emit('update:open', false)
       }
     }
-  } catch (e: any) {
-    if (e.response?.status === 410) {
+  } catch (e: unknown) {
+    const err = e as { response?: { status?: number } }
+    if (err.response?.status === 410) {
       toast.error('Время истекло или судоку уже завершено')
       emit('update:open', false)
     }
@@ -143,11 +143,11 @@ async function completeSudoku() {
   verifying.value = true
   try {
     const res = await captchaApi.completeSudoku(captchaId.value)
-    const data = res.data as any
+    const data = res.data
     if (data) {
       emit('success', data.captcha_token)
     }
-  } catch (e) {
+  } catch {
     toast.error('Ошибка при завершении судоку')
   } finally {
     verifying.value = false

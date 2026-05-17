@@ -27,13 +27,13 @@ type IntimacyTier struct {
 
 // IntimacyInfo is the computed intimacy data returned to clients.
 type IntimacyInfo struct {
-	RawScore              int
-	Tier                  int
-	TierName              string
-	NextTierAt            *int // nil if max tier
-	CooldownReductionPct  int  // 0-50
-	AvailableHugTypes     []string
-	BonusCoins            int
+	RawScore             int
+	Tier                 int
+	TierName             string
+	NextTierAt           *int // nil if max tier
+	CooldownReductionPct int  // 0-50
+	AvailableHugTypes    []string
+	BonusCoins           int
 }
 
 // ConnectionItem represents a user's connection with intimacy info.

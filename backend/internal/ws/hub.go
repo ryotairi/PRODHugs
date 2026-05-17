@@ -59,7 +59,7 @@ func NewHub(jwtManager *jwt.Manager) *Hub {
 // Authenticates via the first client message: {"type":"auth","token":"..."}.
 func (h *Hub) HandleWS(c echo.Context) error {
 	websocket.Handler(func(ws *websocket.Conn) {
-		defer ws.Close()
+		defer func() { _ = ws.Close() }()
 
 		// Require auth as the very first client message to avoid leaking JWT in URL.
 		_ = ws.SetReadDeadline(time.Now().Add(10 * time.Second))
