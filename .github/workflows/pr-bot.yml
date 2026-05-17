@@ -1,0 +1,134 @@
+name: PR bot
+
+# Listens for comments on PRs and dispatches the PR checks workflow when
+# someone uses the bot. Two equivalent invocations are supported:
+#
+#   /ci                          → run all checks
+#   /ci run                      → same
+#   /ci backend                  → backend only
+#   /ci frontend                 → frontend only
+#   /ci run frontend skip-docker → frontend only, skip the Docker step
+#   @github-pr-bot run …         → same syntax, just with a mention
+#
+# Tokens after the verb are positional and unordered:
+#   - any of "backend", "frontend", "all" → scope
+#   - "skip-docker" / "nodocker"          → SKIP_DOCKER=true
+#
+# Authorization: only repo collaborators with write permission can trigger
+# reruns. Anyone else gets a 👎 reaction on their comment.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  dispatch:
+    name: Dispatch from PR comment
+    runs-on: ubuntu-latest
+    if: >
+      github.event.issue.pull_request &&
+      (startsWith(github.event.comment.body, '/ci') ||
+       contains(github.event.comment.body, '@github-pr-bot'))
+    steps:
+      - name: Parse + authorize + dispatch
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const commentId = context.payload.comment.id;
+            const issueNumber = context.payload.issue.number;
+            const author = context.payload.comment.user.login;
+
+            // Acknowledge fast so the user can see we noticed.
+            await github.rest.reactions.createForIssueComment({
+              owner, repo, comment_id: commentId, content: 'eyes',
+            });
+
+            const react = async (content) => {
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner, repo, comment_id: commentId, content,
+                });
+              } catch (e) {
+                core.warning(`reaction ${content} failed: ${e.message}`);
+              }
+            };
+
+            // Permission gate — write or admin only.
+            let perm = 'none';
+            try {
+              const r = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner, repo, username: author,
+              });
+              perm = r.data.permission;
+            } catch (e) {
+              core.warning(`perm lookup failed: ${e.message}`);
+            }
+            if (!['admin', 'maintain', 'write'].includes(perm)) {
+              core.notice(`user ${author} has ${perm} permission; rejecting`);
+              await react('-1');
+              return;
+            }
+
+            // Parse the command. Strip the prefix, then collect lowercase
+            // tokens from the rest of the line.
+            const raw = (context.payload.comment.body || '').split(/\r?\n/)[0] || '';
+            const stripped = raw
+              .replace(/^\/ci\b/, '')
+              .replace(/@github-pr-bot\b/, '')
+              .trim()
+              .toLowerCase();
+            const tokens = stripped.split(/\s+/).filter(Boolean);
+
+            let targets = 'all';
+            let skipDocker = 'false';
+            for (const t of tokens) {
+              if (t === 'run') continue;
+              if (t === 'backend' || t === 'frontend' || t === 'all') {
+                targets = t;
+              } else if (t === 'skip-docker' || t === 'nodocker') {
+                skipDocker = 'true';
+              } else {
+                core.warning(`unknown token: ${t}`);
+              }
+            }
+
+            // Fetch the PR so we can pin the dispatch to its head SHA.
+            const pr = await github.rest.pulls.get({
+              owner, repo, pull_number: issueNumber,
+            });
+            const headSha = pr.data.head.sha;
+
+            core.info(
+              `dispatching pr-checks: pr=${issueNumber} sha=${headSha.slice(0,7)} ` +
+              `targets=${targets} skip_docker=${skipDocker} (by ${author})`,
+            );
+
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: 'pr-checks.yml',
+                ref: context.payload.repository.default_branch,
+                inputs: {
+                  pr_number: String(issueNumber),
+                  head_sha: headSha,
+                  targets,
+                  skip_docker: skipDocker,
+                },
+              });
+              await react('rocket');
+            } catch (e) {
+              core.setFailed(`dispatch failed: ${e.message}`);
+              await react('confused');
+            }
