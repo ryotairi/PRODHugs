@@ -147,6 +147,22 @@ jobs:
       PR_NUMBER: ${{ needs.setup.outputs.pr_number }}
       HEAD_SHA: ${{ needs.setup.outputs.head_sha }}
       SKIP_DOCKER: ${{ needs.setup.outputs.skip_docker }}
+    services:
+      # Postgres for the smoke-test step. Cheaper than spinning up
+      # docker-compose; goose migrations run from the binary on startup.
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: service
+          POSTGRES_PASSWORD: smoke_password
+          POSTGRES_DB: service
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U service -d service"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6
         with:
@@ -248,6 +264,18 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke (curl happy-path)
+        id: smoke
+        continue-on-error: true
+        env:
+          POSTGRES_URL: postgres://service:smoke_password@127.0.0.1:5432/service?sslmode=disable
+          JWT_SECRET: smoke_secret_thirty_two_chars_minimum_so_jwt_lib_accepts
+        run: |
+          set -o pipefail
+          go build -o /tmp/service ./cmd
+          export BACKEND_BIN=/tmp/service
+          bash ../.github/scripts/smoke-backend.sh 2>&1 | tee "$RUNNER_TEMP/smoke.out"
+
       - name: sqlc codegen drift
         id: sqlc
         continue-on-error: true
@@ -289,6 +317,7 @@ jobs:
           R_OAPI_V1: ${{ steps.oapi_v1.outcome }}
           R_OAPI_V2: ${{ steps.oapi_v2.outcome }}
           R_SQLC: ${{ steps.sqlc.outcome }}
+          R_SMOKE: ${{ steps.smoke.outcome }}
           R_DOCKER: ${{ steps.docker.outcome || 'skipped' }}
           JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ github.job }}
           TRIGGER: ${{ github.event_name }}
@@ -315,7 +344,7 @@ jobs:
       - name: Conclude
         if: always()
         env:
-          OUTCOMES: ${{ steps.gofmt.outcome }} ${{ steps.vet.outcome }} ${{ steps.build.outcome }} ${{ steps.test.outcome }} ${{ steps.lint.outcome }} ${{ steps.oapi_v1.outcome }} ${{ steps.oapi_v2.outcome }} ${{ steps.sqlc.outcome }} ${{ steps.docker.outcome }}
+          OUTCOMES: ${{ steps.gofmt.outcome }} ${{ steps.vet.outcome }} ${{ steps.build.outcome }} ${{ steps.test.outcome }} ${{ steps.lint.outcome }} ${{ steps.oapi_v1.outcome }} ${{ steps.oapi_v2.outcome }} ${{ steps.sqlc.outcome }} ${{ steps.smoke.outcome }} ${{ steps.docker.outcome }}
         run: |
           for o in $OUTCOMES; do
             if [ "$o" = "failure" ]; then
