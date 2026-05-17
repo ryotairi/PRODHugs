@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useOnlineStore } from '@/stores/online'
 import { useTicker } from '@/composables/useTicker'
 import { formatRemainingTime } from '@/lib/utils'
+import { profileLink } from '@/lib/profileLink'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Send, Star, Zap, Coins as Coin, Timer as TimerIcon } from 'lucide-vue-next'
 import HugButton from './HugButton.vue'
@@ -67,7 +68,7 @@ const formatResponseTime = (seconds: number) => {
     :class="{ 'border-prod-yellow/50 bg-prod-yellow/5': isVip }"
   >
     <RouterLink
-      :to="user.username ? `/user/@${user.username}` : `/user/${user.id}`"
+      :to="profileLink(user.username, user.id)"
       class="flex items-center gap-3 flex-1 min-w-0"
     >
       <div class="shrink-0 grid grid-cols-1 grid-rows-1 items-end justify-items-end">

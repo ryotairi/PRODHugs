@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useHugsStore, type IntimacyLeaderboardEntry } from '@/stores/hugs'
+import { profileLink } from '@/lib/profileLink'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -147,7 +148,7 @@ onMounted(() => {
                     v-for="(entry, index) in hugsStore.leaderboard"
                     :key="entry.user_id"
                     class="cursor-pointer hover:bg-[#002D20]"
-                    @click="$router.push(`/user/${entry.user_id}`)"
+                    @click="$router.push(profileLink(entry.username, entry.user_id))"
                   >
                     <TableCell
                       class="font-medium tabular-nums text-xs sm:text-sm"
@@ -240,14 +241,14 @@ onMounted(() => {
 
                 <div class="min-w-0 flex-1 text-sm">
                   <RouterLink
-                    :to="`/user/${entry.user_a_id}`"
+                    :to="profileLink(entry.user_a_username, entry.user_a_id)"
                     class="font-medium hover:underline"
                   >
                     {{ displayName(entry.user_a_username, entry.user_a_display_name) }}
                   </RouterLink>
                   <span class="mx-1.5 text-muted-foreground">&amp;</span>
                   <RouterLink
-                    :to="`/user/${entry.user_b_id}`"
+                    :to="profileLink(entry.user_b_username, entry.user_b_id)"
                     class="font-medium hover:underline"
                   >
                     {{ displayName(entry.user_b_username, entry.user_b_display_name) }}

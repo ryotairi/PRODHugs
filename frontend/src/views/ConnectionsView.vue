@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useHugsStore, type ConnectionItem } from '@/stores/hugs'
+import { profileLink } from '@/lib/profileLink'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -44,7 +45,7 @@ onMounted(load)
       <RouterLink
         v-for="conn in connections"
         :key="conn.user_id"
-        :to="`/user/${conn.user_id}`"
+        :to="profileLink(conn.username, conn.user_id)"
         class="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/50 sm:px-4"
       >
         <Avatar class="size-10 shrink-0">

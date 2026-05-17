@@ -6,6 +6,7 @@ import { useAuthStore, type Gender } from '@/stores/auth'
 import { useHugsStore, type BlockedUser } from '@/stores/hugs'
 import { authApi, usersApi } from '@/api/client'
 import { plural } from '@/lib/utils'
+import { profileLink } from '@/lib/profileLink'
 import { validateChangePasswordForm, parseBackendError, type FieldError } from '@/lib/validation'
 import {
   Dialog,
@@ -456,7 +457,7 @@ async function savePassword() {
                 </AvatarFallback>
               </Avatar>
               <RouterLink
-                :to="`/user/${user.id}`"
+                :to="profileLink(user.username, user.id)"
                 class="min-w-0 flex-1 truncate text-sm font-medium hover:underline"
                 @click="open = false"
               >

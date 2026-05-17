@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner'
 import { useHugsStore } from '@/stores/hugs'
 import { useAuthStore } from '@/stores/auth'
 import { suggestVerb } from '@/lib/utils'
+import { profileLink } from '@/lib/profileLink'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -15,7 +16,11 @@ const buying = ref(false)
 
 const outgoing = computed(() => hugsStore.outgoingHugs)
 const slots = computed(() => hugsStore.slotInfo)
-const canBuy = computed(() => slots.value.next_slot_cost !== null)
+// The backend reports next_slot_cost as null once the user is at MaxHugSlots.
+// Use a loose `!= null` check so an *undefined* (e.g. while the first
+// fetch is still in flight) doesn't render the button either — otherwise
+// users at max briefly see "Купить слот" before the response lands.
+const canBuy = computed(() => slots.value.next_slot_cost != null)
 
 // Build a fixed-length array of slots. Each slot is either filled (has a hug) or empty.
 const slotItems = computed(() => {
@@ -96,7 +101,7 @@ async function buySlot() {
               Ты {{ suggestVerb(auth.user?.gender) }} обняться
             </span>
             <RouterLink
-              :to="`/user/${slot.hug.receiver_id}`"
+              :to="profileLink(slot.hug.receiver_username, slot.hug.receiver_id)"
               class="font-medium hover:underline"
             >
               {{ slot.hug.receiver_display_name || slot.hug.receiver_username }}

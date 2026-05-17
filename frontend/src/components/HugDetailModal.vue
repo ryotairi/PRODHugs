@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { MessageSquare, Heart, Loader2 } from 'lucide-vue-next'
 import { useHugsStore, type HugDetail } from '@/stores/hugs'
 import { hugTypeLabel } from '@/lib/utils'
+import { profileLink } from '@/lib/profileLink'
 import {
   Dialog,
   DialogContent,
@@ -93,7 +94,7 @@ function statusLabel(status: string): string {
           <div class="flex items-center justify-between text-sm">
             <span class="text-muted-foreground">Отправитель</span>
             <RouterLink
-              :to="`/user/${detail.giver_id}`"
+              :to="profileLink(detail.giver_username, detail.giver_id)"
               class="font-medium hover:underline"
               @click="open = false"
             >
@@ -103,7 +104,7 @@ function statusLabel(status: string): string {
           <div class="flex items-center justify-between text-sm">
             <span class="text-muted-foreground">Получатель</span>
             <RouterLink
-              :to="`/user/${detail.receiver_id}`"
+              :to="profileLink(detail.receiver_username, detail.receiver_id)"
               class="font-medium hover:underline"
               @click="open = false"
             >

@@ -88,7 +88,11 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   let token = accessToken.value
 
-  if (!token && to.meta.auth) {
+  // Try a silent refresh for both auth- AND guest-only routes. Without this,
+  // a logged-in user opening /login or /register directly (no in-memory
+  // access token but a valid refresh cookie) would still see the form
+  // instead of being bounced to /dashboard.
+  if (!token && (to.meta.auth || to.meta.guest)) {
     token = await ensureAccessToken()
   }
 

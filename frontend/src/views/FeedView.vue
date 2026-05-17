@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useHugsStore, type HugFeedItem, type HugActivityItem } from '@/stores/hugs'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { hugFeedPhrase, streakTierLabel } from '@/lib/utils'
+import { profileLink } from '@/lib/profileLink'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import HugDetailModal from '@/components/HugDetailModal.vue'
@@ -332,7 +333,7 @@ onUnmounted(() => {
           >
             <div class="min-w-0 flex-1 text-sm">
               <RouterLink
-                :to="`/user/${item.giver_id}`"
+                :to="profileLink(item.giver_username, item.giver_id)"
                 class="font-medium hover:underline"
                 @click.stop
               >{{ item.giver_display_name || item.giver_username }}</RouterLink>
@@ -340,7 +341,7 @@ onUnmounted(() => {
                 hugFeedPhrase(item.giver_gender, item.hug_type)
               }}</span>
               <RouterLink
-                :to="`/user/${item.receiver_id}`"
+                :to="profileLink(item.receiver_username, item.receiver_id)"
                 class="font-medium hover:underline"
                 @click.stop
               >{{ item.receiver_display_name || item.receiver_username }}</RouterLink>

@@ -24,6 +24,7 @@ import {
   type TopStreakEntry,
 } from '@/stores/hugs'
 import { formatRemainingTime } from '@/lib/utils'
+import { profileLink } from '@/lib/profileLink'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -320,7 +321,7 @@ const rankInfo = () => getRankProgress(profile.value?.total_hugs ?? 0)
             <RouterLink
               v-for="entry in topStreaks"
               :key="entry.user_id"
-              :to="`/user/${entry.user_id}`"
+              :to="profileLink(entry.username, entry.user_id)"
               class="flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50"
             >
               <span class="text-sm font-medium">
@@ -377,7 +378,7 @@ const rankInfo = () => getRankProgress(profile.value?.total_hugs ?? 0)
                 <span v-if="hug.giver_id === auth.user?.id" class="text-muted-foreground">
                   Ты {{ hugVerb(auth.user?.gender) }}
                   <RouterLink
-                    :to="`/user/${hug.receiver_id}`"
+                    :to="profileLink(hug.receiver_username, hug.receiver_id)"
                     class="font-medium text-foreground hover:underline"
                     @click.stop
                     >{{ hug.receiver_display_name || hug.receiver_username }}</RouterLink
@@ -385,7 +386,7 @@ const rankInfo = () => getRankProgress(profile.value?.total_hugs ?? 0)
                 </span>
                 <span v-else class="text-muted-foreground">
                   <RouterLink
-                    :to="`/user/${hug.giver_id}`"
+                    :to="profileLink(hug.giver_username, hug.giver_id)"
                     class="font-medium text-foreground hover:underline"
                     @click.stop
                     >{{ hug.giver_display_name || hug.giver_username }}</RouterLink
