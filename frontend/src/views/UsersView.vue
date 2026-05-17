@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Search, Loader2, Star, Zap, Crown, Coins as Coin, Timer as TimerIcon } from 'lucide-vue-next'
-import { useHugsStore } from '@/stores/hugs'
+import { Search, Loader2, Star, Zap, Timer as TimerIcon } from 'lucide-vue-next'
+import { useHugsStore, type SearchUser } from '@/stores/hugs'
 import { useOnlineStore } from '@/stores/online'
 import { useAuthStore } from '@/stores/auth'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useTicker } from '@/composables/useTicker'
 import { formatRemainingTime } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import UserCard from '@/components/UserCard.vue'
@@ -23,7 +22,7 @@ const ws = useWebSocket()
 const { now } = useTicker()
 const query = ref('')
 const sortBySpeed = ref(false)
-const users = ref<any[]>([])
+const users = ref<SearchUser[]>([])
 const loading = ref(false)
 const loadingVips = ref(false)
 const loadingMore = ref(false)
@@ -46,7 +45,7 @@ const sponsoredUsers = computed(() => {
 const mainListUsers = computed(() => {
   const sponsoredIds = new Set(sponsoredUsers.value.map(u => u.id.toLowerCase()))
   
-  let list = users.value.filter(u => !sponsoredIds.has(u.id.toLowerCase()))
+  const list = users.value.filter(u => !sponsoredIds.has(u.id.toLowerCase()))
   
   if (sortBySpeed.value) {
     return [...list].sort((a, b) => {
@@ -56,10 +55,10 @@ const mainListUsers = computed(() => {
       if (aPromoted !== bPromoted) return aPromoted - bPromoted
       
       // 2. Sort by response speed (fastest first)
-      // Treat null/negative as very slow (Infinity)
-      const aSpeed = (a.avg_response_time !== null && a.avg_response_time >= 0) ? a.avg_response_time : Infinity
-      const bSpeed = (b.avg_response_time !== null && b.avg_response_time >= 0) ? b.avg_response_time : Infinity
-      
+      // Treat null/undefined/negative as very slow (Infinity)
+      const aSpeed = a.avg_response_time != null && a.avg_response_time >= 0 ? a.avg_response_time : Infinity
+      const bSpeed = b.avg_response_time != null && b.avg_response_time >= 0 ? b.avg_response_time : Infinity
+
       if (aSpeed !== bSpeed) return aSpeed - bSpeed
       
       // 3. Activity status

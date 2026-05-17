@@ -95,9 +95,10 @@ async function handlePromote() {
       hugsStore.fetchBalance(),
       hugsStore.fetchVIPs()
     ])
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
     toast.error('Ошибка', {
-      description: error.response?.data?.message || 'Не удалось активировать VIP',
+      description: err.response?.data?.message || 'Не удалось активировать VIP',
     })
   } finally {
     loading.value = false

@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import router from '@/router'
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/lib/token'
+import type { User } from '@/stores/auth'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -146,7 +147,7 @@ export const authApi = {
   initTelegramLogin: () =>
     api.post<{ bot_url: string; poll_token: string }>('/auth/telegram/init'),
   pollTelegramLogin: (pollToken: string) =>
-    api.post<{ token: string; user: any }>(
+    api.post<{ token: string; user: User }>(
       '/auth/telegram/poll',
       { poll_token: pollToken },
     ),

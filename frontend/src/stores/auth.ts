@@ -45,8 +45,9 @@ export const useAuthStore = defineStore('auth', () => {
       setAccessToken(res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
       await router.push('/dashboard')
-    } catch (e: any) {
-      error.value = e.response?.data?.message || 'Ошибка регистрации'
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      error.value = err.response?.data?.message || 'Ошибка регистрации'
       throw e
     } finally {
       loading.value = false
@@ -63,8 +64,9 @@ export const useAuthStore = defineStore('auth', () => {
       setAccessToken(res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
       await router.push('/dashboard')
-    } catch (e: any) {
-      error.value = e.response?.data?.message || 'Неверные данные'
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      error.value = err.response?.data?.message || 'Неверные данные'
       throw e
     } finally {
       loading.value = false

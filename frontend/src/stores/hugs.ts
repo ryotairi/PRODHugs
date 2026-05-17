@@ -215,6 +215,26 @@ export interface StreakCalendarDay {
   completed: boolean
 }
 
+// SearchUser mirrors the v1 UserListItem schema (and the equivalent v2 one).
+// Used both for the user-search results and the VIP slot list.
+export interface SearchUser {
+  id: string
+  username: string
+  role: string
+  gender?: string | null
+  display_name?: string | null
+  tag?: string | null
+  special_tag?: string | null
+  is_telegram_linked?: boolean
+  is_recently_active?: boolean
+  avg_response_time?: number | null
+  promoted_until?: string | null
+  promotion_message?: string | null
+  promotion_bid?: number
+  vip_remaining_seconds?: number
+  vip_cooldown_until?: string | null
+}
+
 export interface PairStreakResponse {
   streak: StreakInfo
   calendar: StreakCalendarDay[]
@@ -225,7 +245,7 @@ export const useHugsStore = defineStore('hugs', () => {
   const feed = ref<HugFeedItem[]>([])
   const leaderboard = ref<LeaderboardEntry[]>([])
   const history = ref<HugFeedItem[]>([])
-  const vips = ref<any[]>([])
+  const vips = ref<SearchUser[]>([])
   const loading = ref(false)
   const feedLoading = ref(false)
   const leaderboardLoading = ref(false)

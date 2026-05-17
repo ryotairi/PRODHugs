@@ -22,5 +22,19 @@ export default defineConfigWithVueTs(
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
+  // shadcn-vue components are vendored under src/components/ui/ — they're
+  // copy-pasted from the registry, follow its single-word naming convention,
+  // and use `any` in a few generic spots we don't want to diverge from
+  // upstream over. Don't enforce our app rules on them.
+  {
+    name: 'app/shadcn-ui-vendored',
+    files: ['src/components/ui/**/*.{vue,ts}'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+
   skipFormatting,
 )
